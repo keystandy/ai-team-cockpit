@@ -1,9 +1,9 @@
 /* 磨坊办公室 · 数据快照
-   由 probe.mjs 自动生成（2026-11-14 20:39），也可手改。
+   由 probe.mjs 自动生成（2026-11-14 20:47），也可手改。
    注意：这是 JS 而非 JSON —— 为了在 file:// 下也能直接双击打开（无 CORS 限制）。 */
 
 window.OFFICE = {
-  "generatedAt": "2026-11-14 20:39",
+  "generatedAt": "2026-11-14 20:47",
   "connectivity": "4/4 员工 + 老板",
   "agents": [
     {
@@ -59,7 +59,7 @@ window.OFFICE = {
         "读写本地文件",
         "起子进程"
       ],
-      "last": "20:39 版本探活 / 340ms",
+      "last": "20:47 版本探活 / 462ms",
       "latency": "单次冷启动 30s 级",
       "limit": "不能多轮对话；不读凭据文件，须注入 DEEPSEEK_API_KEY",
       "cmd": "DSH_HOME=E:\\DSHDockData\\dsh-home\nELECTRON_RUN_AS_NODE=1 \"…/DSH NEXT.exe\" \"…/dsh/lib/bin.js\" --profile headless \"任务\""
@@ -87,7 +87,7 @@ window.OFFICE = {
         "批量文件",
         "reasoning high"
       ],
-      "last": "20:39 版本探活 / 152ms",
+      "last": "20:47 版本探活 / 270ms",
       "latency": "12s / 300~8000 tok",
       "limit": "仅 danger-full-access 可用，必须 -C 锁目录",
       "cmd": "codex.exe exec --skip-git-repo-check \\\n  --sandbox danger-full-access -C \"目录\" \"任务\" < /dev/null"
@@ -115,7 +115,7 @@ window.OFFICE = {
         "对比差异",
         "严谨写作"
       ],
-      "last": "20:39 版本探活 / 141ms",
+      "last": "20:47 版本探活 / 239ms",
       "latency": "秒级 · 按量",
       "limit": "非交互 -p，不能中途追问",
       "cmd": "cd \"目录\" && claude -p \"任务\" < /dev/null"
@@ -144,7 +144,7 @@ window.OFFICE = {
         "落盘",
         "16 个模型"
       ],
-      "last": "20:39 鉴权通过 / 419ms",
+      "last": "20:47 鉴权通过 / 286ms",
       "latency": "问答 2s / 联网 25s",
       "limit": "无工具执行能力，碰不到文件系统",
       "cmd": "node doubao.mjs \"问题\" --image 图.png --web --out 路径.md"
@@ -180,6 +180,34 @@ window.OFFICE = {
     "usedPct": 18
   },
   "log": [
+    {
+      "t": "20:47",
+      "who": "小深",
+      "msg": "探活通过：版本探活 / 462ms",
+      "ok": true,
+      "bad": false
+    },
+    {
+      "t": "20:47",
+      "who": "小酷",
+      "msg": "探活通过：版本探活 / 270ms",
+      "ok": true,
+      "bad": false
+    },
+    {
+      "t": "20:47",
+      "who": "小克",
+      "msg": "探活通过：版本探活 / 239ms",
+      "ok": true,
+      "bad": false
+    },
+    {
+      "t": "20:47",
+      "who": "小豆",
+      "msg": "探活通过：鉴权通过 / 286ms",
+      "ok": true,
+      "bad": false
+    },
     {
       "t": "20:39",
       "who": "小深",

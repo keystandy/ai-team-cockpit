@@ -4,6 +4,9 @@ dom.html
 node_modules/
 *.log
 
+# 本机配置（含绝对路径，不提交）
+local.config.json
+
 # 探活会重写 data/office.js，但它是仓库一部分，不忽略
 
 # 编辑器

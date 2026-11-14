@@ -34,12 +34,14 @@
 
 ```
 cockpit/
-├─ index.html         驾驶舱本体（约 20 KB，含全部样式与逻辑）
-├─ probe.mjs          探活脚本，刷新 data/office.js
+├─ index.html                    驾驶舱本体（约 20 KB，含全部样式与逻辑）
+├─ probe.mjs                     探活脚本，刷新 data/office.js
 ├─ data/
-│  └─ office.js       数据快照（JS 而非 JSON，为了 file:// 能直接打开）
-├─ preview.png        效果截图
-└─ 打开驾驶舱.cmd      Windows 双击入口
+│  └─ office.js                  数据快照（JS 而非 JSON，为了 file:// 能直接打开）
+├─ preview.png                   效果截图
+├─ local.config.example.json     本机路径配置模板
+├─ 打开驾驶舱.cmd                 Windows 双击入口
+└─ .gitignore
 ```
 
 总计约 170 KB。
@@ -79,6 +81,17 @@ node probe.mjs --live   # 真给每个员工发一句「只回复两个字：在
 | 小豆 | `GET /api/v3/models` 鉴权 | `chat/completions` 实呼，约 2s |
 
 脚本会保留配色、座位、能力标签，只更新状态、耗时和日志。
+
+### 换台机器怎么用
+
+四个员工的程序路径因机器而异。复制 `local.config.example.json` 为 `local.config.json`，改里面的路径即可；这个文件已被 `.gitignore` 忽略，不会上传。不建也能跑，会退回源码里的默认值。
+
+```bash
+cp local.config.example.json local.config.json
+# 然后改 dshExe / codexExe / claudeExe / arkCredentials 这几项
+```
+
+哪一项路径不对，那个员工就显示离线——不会崩，只是探活失败。日志里能看到失败原因。
 
 ## 改员工 / 加员工
 

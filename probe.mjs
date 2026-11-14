@@ -63,16 +63,23 @@ function run(cmd, args, opts = {}) {
   });
 }
 
-const DSH_EXE = 'D:\\Program Files\\DSH NEXT\\DSH NEXT.exe';
-const DSH_BIN = 'D:\\Program Files\\DSH NEXT\\resources\\app.asar\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js';
-const CODEX_EXE = 'D:\\WindowsApps\\OpenAI.Codex_26.1111.2228.0_x64__2p2nqsd0c76g0\\app\\resources\\codex.exe';
-const CLAUDE_EXE = 'D:\\Programs\\claude-code\\claude.exe';
-const CRED = path.join(HERE, '..', '..', 'doubao-bridge', '.credentials');
+/* ---------- 本机路径：优先读 local.config.json，缺省用下面这份 ---------- */
+const CFG = (() => {
+  try { return JSON.parse(fs.readFileSync(path.join(HERE, 'local.config.json'), 'utf8')); } catch { return {}; }
+})();
+
+const DSH_EXE = CFG.dshExe || 'D:\\Program Files\\DSH NEXT\\DSH NEXT.exe';
+const DSH_BIN = CFG.dshBin || path.join(path.dirname(DSH_EXE), 'resources', 'app.asar', 'node_modules', '@deepseek-ai', 'dsh', 'lib', 'bin.js');
+const CODEX_EXE = CFG.codexExe || 'D:\\WindowsApps\\OpenAI.Codex_26.1111.2228.0_x64__2p2nqsd0c76g0\\app\\resources\\codex.exe';
+const CLAUDE_EXE = CFG.claudeExe || 'D:\\Programs\\claude-code\\claude.exe';
+const CRED = CFG.arkCredentials || path.join(HERE, '..', '..', 'doubao-bridge', '.credentials');
+const DSH_HOME = CFG.dshHome || 'E:\\DSHDockData\\dsh-home';
+const DSH_CRED = CFG.dshCredentials || path.join(DSH_HOME, '.credentials.yaml');
 
 function dshEnv() {
-  const env = { DSH_HOME: 'E:\\DSHDockData\\dsh-home', ELECTRON_RUN_AS_NODE: '1' };
+  const env = { DSH_HOME, ELECTRON_RUN_AS_NODE: '1' };
   try {
-    const raw = fs.readFileSync('E:\\DSHDockData\\dsh-home\\.credentials.yaml', 'utf8');
+    const raw = fs.readFileSync(DSH_CRED, 'utf8');
     const m = raw.match(/sk-[A-Za-z0-9_-]{20,}/);
     if (m) env.DEEPSEEK_API_KEY = m[0];
   } catch {}

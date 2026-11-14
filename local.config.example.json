@@ -1,0 +1,13 @@
+{
+  "_说明": "复制本文件为 local.config.json 再改。local.config.json 已被 .gitignore 忽略，不会上传。不填任何一项就用代码里的默认值。",
+
+  "dshExe": "D:\\Program Files\\DSH NEXT\\DSH NEXT.exe",
+  "dshBin": "D:\\Program Files\\DSH NEXT\\resources\\app.asar\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js",
+  "dshHome": "E:\\DSHDockData\\dsh-home",
+  "dshCredentials": "E:\\DSHDockData\\dsh-home\\.credentials.yaml",
+
+  "codexExe": "D:\\WindowsApps\\OpenAI.Codex_26.1111.2228.0_x64__2p2nqsd0c76g0\\app\\resources\\codex.exe",
+  "claudeExe": "D:\\Programs\\claude-code\\claude.exe",
+
+  "arkCredentials": "E:\\WorkBuddy工作空间\\doubao-bridge\\.credentials"
+}
