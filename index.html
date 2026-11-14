@@ -311,8 +311,10 @@ p {
 .page {
   width: 100%;
   max-width: 1440px;
+  height: calc(100vh - 64px);
   margin: var(--space-0) auto;
   padding: var(--space-6);
+  overflow: hidden;
 }
 
 .workspace {
@@ -320,12 +322,16 @@ p {
   grid-template-columns: minmax(640px, 1fr) 320px;
   align-items: start;
   gap: var(--space-7);
+  height: 100%;
   min-width: 0;
 }
 
 .main-column,
 .rail {
   min-width: 0;
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .main-column {
@@ -716,6 +722,234 @@ p {
   color: var(--status-failed);
 }
 
+.artifacts-card {
+  min-width: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+}
+
+.artifacts-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.artifacts-title {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.artifacts-count {
+  color: var(--text-secondary);
+}
+
+.artifact-filters {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.artifact-filter {
+  height: 32px;
+  padding: var(--space-1) var(--space-2);
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--text-secondary);
+  transition:
+    color var(--duration-expand) var(--ease-out),
+    background-color var(--duration-expand) var(--ease-out);
+}
+
+.artifact-filter:hover {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+}
+
+.artifact-filter[aria-pressed="true"] {
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.artifacts-list {
+  max-height: 488px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.artifact-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  column-gap: var(--space-4);
+  row-gap: var(--space-1);
+  padding: var(--space-2) var(--space-0);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.artifact-row:last-child {
+  border-bottom: 0;
+}
+
+.artifact-row.is-new {
+  animation: artifact-in var(--duration-expand) var(--ease-out) 1;
+}
+
+.artifact-primary {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+}
+
+.artifact-name-line {
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  flex: 1;
+}
+
+.artifact-name {
+  min-width: 0;
+  max-width: 100%;
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.artifact-tag {
+  flex: none;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.artifact-tag.is-real {
+  background: var(--status-online-soft);
+  color: var(--status-online);
+}
+
+.artifact-actions {
+  grid-column: 2;
+  grid-row: 1;
+  align-self: start;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+  padding-right: var(--space-1);
+}
+
+.artifact-actions .button {
+  flex: none;
+}
+
+.artifact-actions .button:disabled {
+  border-color: var(--border-strong);
+  background: var(--bg-subtle);
+  color: var(--text-placeholder);
+  cursor: default;
+}
+
+.artifact-demo-note {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.artifact-meta {
+  grid-column: 1 / -1;
+  grid-row: 2;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  color: var(--text-secondary);
+}
+
+.artifact-owner {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  flex: none;
+}
+
+.artifact-avatar {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border-radius: var(--radius-round);
+  background: var(--bg-subtle);
+}
+
+.artifact-avatar svg {
+  width: 20px;
+  height: 20px;
+  display: block;
+}
+
+.artifact-path {
+  max-width: 100%;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.artifact-progress {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-0);
+  border-bottom: 1px solid var(--border-subtle);
+  color: var(--status-busy);
+}
+
+.artifact-status-copy {
+  color: var(--text-secondary);
+}
+
+.artifact-empty {
+  padding: var(--space-8) var(--space-0);
+  color: var(--text-placeholder);
+}
+
+.artifact-empty strong {
+  display: block;
+  font-weight: 600;
+}
+
+.artifact-empty span {
+  display: block;
+  margin-top: var(--space-1);
+}
+
+.artifact-collapsed {
+  padding-top: var(--space-2);
+  color: var(--text-secondary);
+}
+
 .rail {
   width: 320px;
   display: flex;
@@ -970,6 +1204,64 @@ p {
   color: var(--text-primary);
 }
 
+.artifact-dialog {
+  width: 640px;
+}
+
+.artifact-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
+.artifact-dialog-title {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.artifact-dialog-path {
+  margin-top: var(--space-1);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.artifact-dialog-content {
+  max-height: calc(100vh - 192px);
+  margin-top: var(--space-3);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.artifact-dialog-note,
+.artifact-dialog-summary,
+.artifact-dialog-highlights {
+  color: var(--text-secondary);
+}
+
+.artifact-dialog-note {
+  margin-bottom: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+}
+
+.artifact-dialog-summary {
+  color: var(--text-primary);
+}
+
+.artifact-dialog-highlights {
+  margin: var(--space-3) var(--space-0) var(--space-0);
+  padding-left: var(--space-5);
+}
+
+.artifact-dialog-highlights li + li {
+  margin-top: var(--space-1);
+}
+
 .dialog::backdrop {
   background: var(--bg-page);
 }
@@ -1024,9 +1316,32 @@ p {
   }
 }
 
+@keyframes artifact-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (max-width: 1199px) {
+  .page {
+    height: auto;
+    overflow: visible;
+  }
+
   .workspace {
     grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .main-column,
+  .rail {
+    max-height: none;
+    overflow: visible;
   }
 
   .employees {
@@ -1084,6 +1399,38 @@ p {
   .employees,
   .rail {
     grid-template-columns: minmax(0, 1fr);
+  }
+
+  .artifacts-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .artifact-row {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .artifact-primary,
+  .artifact-actions,
+  .artifact-meta {
+    grid-column: 1;
+  }
+
+  .artifact-primary {
+    grid-row: 1;
+  }
+
+  .artifact-actions {
+    grid-row: 3;
+    justify-content: flex-start;
+  }
+
+  .artifact-meta {
+    grid-row: 2;
+  }
+
+  .artifact-dialog {
+    width: calc(100vw - var(--space-7));
   }
 
   .rail-card:first-child {
@@ -1200,6 +1547,23 @@ p {
 
         <div class="employees" id="employees" aria-label="团队成员"></div>
       </div>
+
+      <section class="artifacts-card" aria-labelledby="artifactsTitle">
+        <div class="artifacts-head">
+          <div class="artifacts-title">
+            <h2 class="t2" id="artifactsTitle">团队成果</h2>
+            <span class="artifacts-count t4" id="artifactsCount">真实 0 · 演示 0</span>
+          </div>
+          <div class="artifact-filters" aria-label="筛选团队成果">
+            <button class="artifact-filter t4" type="button" data-artifact-filter="all" aria-pressed="true">全部</button>
+            <button class="artifact-filter t4" type="button" data-artifact-filter="real" aria-pressed="false">真实</button>
+            <button class="artifact-filter t4" type="button" data-artifact-filter="demo" aria-pressed="false">演示</button>
+          </div>
+        </div>
+        <div class="artifacts-list" id="artifactsList" aria-live="polite">
+          <p class="artifact-loading t4 muted">正在读取本机成果…</p>
+        </div>
+      </section>
     </section>
 
     <aside class="rail" aria-label="团队状态与派活">
@@ -1238,14 +1602,28 @@ p {
   </div>
 </dialog>
 
+<dialog class="dialog artifact-dialog" id="artifactDialog" aria-labelledby="artifactDialogTitle">
+  <div class="artifact-dialog-head">
+    <div class="artifact-dialog-title">
+      <h2 class="t2" id="artifactDialogTitle"></h2>
+      <span class="artifact-tag t4" id="artifactDialogTag"></span>
+    </div>
+    <button class="button button-text t3" id="artifactDialogClose" type="button">关闭</button>
+  </div>
+  <p class="artifact-dialog-path t4" id="artifactDialogPath"></p>
+  <div class="artifact-dialog-content" id="artifactDialogContent"></div>
+</dialog>
+
 <script src="assets/logos.js"></script>
 <script src="data/office.js"></script>
+<script src="data/artifacts.js"></script>
 <script>
 (() => {
   "use strict";
 
   const OFFICE = window.OFFICE || { agents: [], log: [] };
   const LOGOS = window.LOGOS || {};
+  const ARTIFACT_SEED = Array.isArray(window.ARTIFACTS) ? window.ARTIFACTS : [];
   const agents = Array.isArray(OFFICE.agents) ? OFFICE.agents : [];
   const hub = agents.find((agent) => agent.id === "bang") || agents[0] || {
     id: "bang",
@@ -1315,6 +1693,14 @@ p {
     memberDetail: document.getElementById("memberDetail"),
     ticketList: document.getElementById("ticketList"),
     ticketCount: document.getElementById("ticketCount"),
+    artifactsCount: document.getElementById("artifactsCount"),
+    artifactsList: document.getElementById("artifactsList"),
+    artifactDialog: document.getElementById("artifactDialog"),
+    artifactDialogTitle: document.getElementById("artifactDialogTitle"),
+    artifactDialogTag: document.getElementById("artifactDialogTag"),
+    artifactDialogPath: document.getElementById("artifactDialogPath"),
+    artifactDialogContent: document.getElementById("artifactDialogContent"),
+    artifactDialogClose: document.getElementById("artifactDialogClose"),
     confirmDialog: document.getElementById("confirmDialog"),
     confirmTitle: document.getElementById("confirmTitle"),
     confirmCopy: document.getElementById("confirmCopy"),
@@ -1330,6 +1716,16 @@ p {
   let syncTimer = null;
   let edgeFrame = null;
   let eventSequence = 0;
+  let artifacts = ARTIFACT_SEED.map((artifact) => ({
+    ...artifact,
+    highlights: Array.isArray(artifact.highlights) ? [...artifact.highlights] : []
+  }));
+  let artifactFilter = "all";
+  let artifactCollapsed = 0;
+  let artifactGenerationActive = false;
+  let newArtifactId = null;
+  let artifactDialogTrigger = null;
+  const demoArtifactJobs = new Set();
 
   function escapeHtml(value) {
     return String(value == null ? "" : value).replace(/[&<>"']/g, (character) => ({
@@ -1370,6 +1766,205 @@ p {
 
   function wait(duration) {
     return new Promise((resolve) => window.setTimeout(resolve, duration));
+  }
+
+  function projectRootPath() {
+    const p = decodeURIComponent(location.pathname);
+    return p.replace(/\/[^/]*$/, "").replace(/^\//, "");
+  }
+
+  function absoluteArtifactPath(relativePath) {
+    const root = projectRootPath();
+    return root.replace(/\//g, "\\") + "\\" + String(relativePath || "").replace(/\//g, "\\");
+  }
+
+  function formatDateTime(date) {
+    const datePart = [
+      date.getFullYear(),
+      String(date.getMonth() + 1).padStart(2, "0"),
+      String(date.getDate()).padStart(2, "0")
+    ].join("-");
+    const timePart = [
+      String(date.getHours()).padStart(2, "0"),
+      String(date.getMinutes()).padStart(2, "0")
+    ].join(":");
+    return `${datePart} ${timePart}`;
+  }
+
+  function sortArtifacts(items) {
+    return [...items].sort((left, right) => {
+      if (Boolean(left.real) !== Boolean(right.real)) return left.real ? -1 : 1;
+      return String(right.time || "").localeCompare(String(left.time || ""));
+    });
+  }
+
+  function enforceArtifactLimit() {
+    if (artifacts.length <= 50) return;
+    const realArtifacts = artifacts.filter((artifact) => artifact.real);
+    const demoArtifacts = sortArtifacts(artifacts.filter((artifact) => !artifact.real));
+    const demoCapacity = Math.max(0, 50 - realArtifacts.length);
+    artifactCollapsed += Math.max(0, demoArtifacts.length - demoCapacity);
+    artifacts = [...realArtifacts, ...demoArtifacts.slice(0, demoCapacity)];
+  }
+
+  function artifactOwner(artifact) {
+    return agentById.get(artifact.ownerId) || team[0] || hub;
+  }
+
+  function artifactTagMarkup(artifact) {
+    return artifact.real
+      ? `<span class="artifact-tag is-real t4">✓ 本机文件</span>`
+      : `<span class="artifact-tag t4">◇ 演示</span>`;
+  }
+
+  function artifactRowMarkup(artifact) {
+    const owner = artifactOwner(artifact);
+    const isReal = Boolean(artifact.real);
+    const relativePath = String(artifact.path || "");
+    const absolutePath = isReal && relativePath ? absoluteArtifactPath(relativePath) : "";
+    const source = escapeHtml(artifact.source || "");
+    const title = escapeHtml(artifact.title || "未命名成果");
+    const copyLabel = `复制${artifact.title || "未命名成果"}路径`;
+    const demoCopy = isReal
+      ? `<button class="button t3" type="button" data-artifact-action="copy" data-artifact-id="${escapeHtml(artifact.id)}" aria-label="${escapeHtml(copyLabel)}" title="${escapeHtml(absolutePath)}">复制路径</button>`
+      : `
+        <button class="button t3" type="button" disabled aria-label="演示成果没有本机路径">复制路径</button>
+        <span class="artifact-demo-note t4">演示成果，未生成本机文件</span>
+      `;
+    const pathMarkup = isReal && relativePath
+      ? `<span class="artifact-path">${escapeHtml(relativePath)}</span>`
+      : "";
+    return `
+      <article class="artifact-row${artifact.id === newArtifactId ? " is-new" : ""}" data-artifact-id="${escapeHtml(artifact.id)}">
+        <div class="artifact-primary">
+          <div class="artifact-name-line">
+            <h3 class="artifact-name t3" title="${title}">${title}</h3>
+            ${artifactTagMarkup(artifact)}
+          </div>
+        </div>
+        <div class="artifact-actions">
+          <button class="button button-text t3" type="button" data-artifact-action="view" data-artifact-id="${escapeHtml(artifact.id)}" aria-label="查看${title}">查看</button>
+          ${demoCopy}
+        </div>
+        <div class="artifact-meta t4">
+          <span class="artifact-owner">
+            <span class="artifact-avatar" aria-hidden="true">${logoMarkup(owner)}</span>
+            <span>${escapeHtml(owner.name)}</span>
+          </span>
+          <span aria-hidden="true">·</span>
+          <span>${source}</span>
+          <span aria-hidden="true">·</span>
+          <time datetime="${escapeHtml(String(artifact.time || "").replace(" ", "T"))}">${escapeHtml(artifact.time || "")}</time>
+          ${pathMarkup ? `<span aria-hidden="true">·</span>${pathMarkup}` : ""}
+        </div>
+      </article>
+    `;
+  }
+
+  function renderArtifacts() {
+    if (!elements.artifactsList) return;
+    const realCount = artifacts.filter((artifact) => artifact.real).length;
+    const demoCount = artifacts.length - realCount;
+    elements.artifactsCount.textContent = `真实 ${realCount} · 演示 ${demoCount}`;
+    document.querySelectorAll("[data-artifact-filter]").forEach((button) => {
+      button.setAttribute("aria-pressed", button.dataset.artifactFilter === artifactFilter ? "true" : "false");
+    });
+
+    if (!ARTIFACT_SEED.length && !artifacts.length) {
+      elements.artifactsList.innerHTML = `
+        <div class="artifact-empty t4">
+          <strong class="t3">成果没读出来，请点刷新重试。</strong>
+          <button class="button button-text t3" type="button" data-artifact-action="reload">重试</button>
+        </div>
+      `;
+      return;
+    }
+
+    let visible = sortArtifacts(artifacts);
+    if (artifactFilter === "real") visible = visible.filter((artifact) => artifact.real);
+    if (artifactFilter === "demo") visible = visible.filter((artifact) => !artifact.real);
+
+    let markup = "";
+    if (artifactGenerationActive) {
+      markup += `
+        <div class="artifact-progress t4">
+          <span aria-hidden="true">◐ 进行中</span>
+          <span class="artifact-status-copy">小酷正在生成「工作台实现」…</span>
+        </div>
+      `;
+    }
+
+    if (!visible.length) {
+      markup += artifacts.length
+        ? `<p class="artifact-empty t4">这一类还没有成果。</p>`
+        : `
+          <div class="artifact-empty t4">
+            <strong class="t3">成果会出现在这里。</strong>
+            <span>小棒派活、成员交结果后，这里会列出能打开的文件。</span>
+          </div>
+        `;
+    } else {
+      markup += visible.map(artifactRowMarkup).join("");
+    }
+
+    if (artifactCollapsed > 0) {
+      markup += `<p class="artifact-collapsed t4">更早的 ${artifactCollapsed} 项成果已收起</p>`;
+    }
+    elements.artifactsList.innerHTML = markup;
+    newArtifactId = null;
+  }
+
+  function openArtifactDialog(artifact, trigger) {
+    artifactDialogTrigger = trigger || null;
+    elements.artifactDialogTitle.textContent = artifact.title || "未命名成果";
+    elements.artifactDialogTag.className = `artifact-tag t4${artifact.real ? " is-real" : ""}`;
+    elements.artifactDialogTag.textContent = artifact.real ? "✓ 本机文件" : "◇ 演示";
+    const absolutePath = artifact.real && artifact.path ? absoluteArtifactPath(artifact.path) : "";
+    elements.artifactDialogPath.textContent = absolutePath;
+    elements.artifactDialogPath.hidden = !absolutePath;
+    const demoNote = artifact.real
+      ? ""
+      : `<p class="artifact-dialog-note t4">这是演示流程生成的内容，不是本机文件</p>`;
+    const summary = artifact.summary || "这项成果没有提供摘要。";
+    const highlights = Array.isArray(artifact.highlights) ? artifact.highlights : [];
+    const highlightsMarkup = highlights.length
+      ? `<ul class="artifact-dialog-highlights t3">${highlights.map((item) => `<li>${escapeHtml(item)}</li>`).join("")}</ul>`
+      : "";
+    elements.artifactDialogContent.innerHTML = `
+      ${demoNote}
+      <p class="artifact-dialog-summary t3">${escapeHtml(summary)}</p>
+      ${highlightsMarkup}
+    `;
+    if (!elements.artifactDialog.open) elements.artifactDialog.showModal();
+    elements.artifactDialogClose.focus();
+  }
+
+  async function maybeAppendDemoArtifact(batch) {
+    if (!batch.length || !batch.every((task) => task.status === "done")) return;
+    const jobId = batch[0].jobId;
+    if (demoArtifactJobs.has(jobId)) return;
+    demoArtifactJobs.add(jobId);
+    await wait(200);
+    const jobName = batch[0].jobName;
+    const subtaskNames = Array.from(new Set(batch.map((task) => task.title))).join("、");
+    const artifact = {
+      id: `demo-artifact-${jobId}`,
+      title: jobName,
+      ownerId: batch[0].ownerId,
+      source: `派活单「${jobName}」/ 子任务「${subtaskNames}」`,
+      time: formatDateTime(new Date()),
+      path: "",
+      real: false,
+      summary: `派活单「${jobName}」的 ${batch.length} 个子任务已完成。这是演示流程生成的内容，不是本机文件。`,
+      highlights: [
+        `派活单：${jobName}`,
+        `子任务：${subtaskNames}`,
+        "全部子任务已完成"
+      ]
+    };
+    artifacts.push(artifact);
+    enforceArtifactLimit();
+    newArtifactId = artifact.id;
   }
 
   function taskForAgent(agentId) {
@@ -1702,6 +2297,7 @@ p {
     renderHubState();
     renderMemberDetail();
     renderTickets();
+    renderArtifacts();
     renderPublishControls();
     renderOnlinePill();
   }
@@ -1818,6 +2414,9 @@ p {
   async function runBatch(batch) {
     const runnable = batch.filter((task) => memberStatus(task.ownerId) !== "offline");
     await Promise.all(runnable.map((task, index) => runTask(task, index)));
+    await maybeAppendDemoArtifact(batch);
+    artifactGenerationActive = false;
+    renderAll();
     publishLocked = false;
     publishing = false;
     renderPublishControls();
@@ -1836,6 +2435,7 @@ p {
 
     publishLocked = true;
     publishing = true;
+    artifactGenerationActive = true;
     setFormMessage("", false);
     renderPublishControls();
     const batch = createJob(text);
@@ -1898,6 +2498,9 @@ p {
     renderAll();
     renderPublishControls();
     await runTask(task, 0);
+    const jobTasks = tasks.filter((item) => item.jobId === task.jobId);
+    await maybeAppendDemoArtifact(jobTasks);
+    renderArtifacts();
     publishLocked = false;
     renderPublishControls();
   }
@@ -1925,6 +2528,9 @@ p {
     publishLocked = true;
     renderPublishControls();
     await runTask(task, 0);
+    const jobTasks = tasks.filter((item) => item.jobId === task.jobId);
+    await maybeAppendDemoArtifact(jobTasks);
+    renderArtifacts();
     publishLocked = false;
     renderPublishControls();
   }
@@ -1958,7 +2564,7 @@ p {
     button.textContent = copied ? "已复制" : "复制失败";
     window.setTimeout(() => {
       button.textContent = oldLabel;
-    }, 1200);
+    }, 2000);
   }
 
   function populateInitialEvents() {
@@ -2038,6 +2644,38 @@ p {
       selectedAgentId = task.ownerId;
       renderAll();
     }
+  });
+
+  document.querySelectorAll("[data-artifact-filter]").forEach((button) => {
+    button.addEventListener("click", () => {
+      artifactFilter = button.dataset.artifactFilter || "all";
+      renderArtifacts();
+    });
+  });
+
+  elements.artifactsList.addEventListener("click", async (event) => {
+    const actionButton = event.target.closest("[data-artifact-action]");
+    if (!actionButton) return;
+    if (actionButton.dataset.artifactAction === "reload") {
+      renderArtifacts();
+      return;
+    }
+    const artifact = artifacts.find((item) => item.id === actionButton.dataset.artifactId);
+    if (!artifact) return;
+    if (actionButton.dataset.artifactAction === "view") {
+      openArtifactDialog(artifact, actionButton);
+    } else if (actionButton.dataset.artifactAction === "copy" && artifact.real && artifact.path) {
+      await copyText(absoluteArtifactPath(artifact.path), actionButton);
+    }
+  });
+
+  elements.artifactDialogClose.addEventListener("click", () => {
+    elements.artifactDialog.close();
+  });
+
+  elements.artifactDialog.addEventListener("close", () => {
+    if (artifactDialogTrigger && artifactDialogTrigger.isConnected) artifactDialogTrigger.focus();
+    artifactDialogTrigger = null;
   });
 
   elements.refreshButton.addEventListener("click", () => {

@@ -90,9 +90,27 @@
 - **成员详情**：点任意卡片查看，含状态、当前任务、已交活数
 - **派活单**：本次拆出的所有子任务，含负责人、状态、命令、复制按钮
 
+## 团队成果区
+
+四张员工卡下面，一行一条，回答「这轮团队到底交付了什么」。这是验收入口：事件流讲过程，这里只列能打开的结果。
+
+![成果区](preview-artifacts.png)
+
+| 类型 | 标记 | 路径 | 数据来源 |
+|---|---|---|---|
+| 真实 | `✓ 本机文件` | 显示真实路径，可复制 | `data/artifacts.js`，路径与时间取自实际文件 |
+| 演示 | `◇ 演示` | 不显示，「复制路径」置灰并注明原因 | 派活单全部子任务完成后自动追加 |
+
+- 排序：真实在前、演示在后，各自按时间倒序
+- 筛选：`全部｜真实｜演示`，计数分开列，不合并成一个数
+- 可视 6 条 + 列表内部滚动，容量 50 条，超出先收最旧的演示条目，真实条目不自动删
+- 「查看」打开的是摘要浮层——`file://` 下浏览器不允许 fetch 本地文件，所以**不假装读到了文件内容**
+- 复制的是绝对路径，路径由页面根据 `location` 推算，不写死盘符，换台机器也能用
+
 ## 设计规格
 
-界面不是随手调的，`build/SPEC.md` 是唯一的视觉依据：
+界面不是随手调的，`build/SPEC.md` 是唯一的视觉依据（成果区的规格在 `build/SPEC-ARTIFACTS.md`，未新增任何变量）：
+
 
 | 项 | 规定 |
 |---|---|
@@ -135,17 +153,22 @@
 ├─ index.html                    工作台本体（单文件，含样式与流程图）
 ├─ probe.mjs                     探活脚本，刷新 data/office.js
 ├─ data/office.js                数据快照（JS 而非 JSON，为了 file:// 能直接打开）
+├─ data/artifacts.js             团队成果种子数据（真实路径与修改时间）
 ├─ assets/logos.js               五个产品标志（内联 SVG）
 ├─ local.config.example.json     本机路径配置模板
-├─ preview.png                   效果截图
+├─ preview.png                   效果截图（主界面）
+├─ preview-artifacts.png         效果截图（团队成果区）
 ├─ 打开驾驶舱.cmd                 Windows 双击入口
 └─ build/                        这一版的设计与实现过程（不进页面运行）
    ├─ SPEC.md                    设计规格书
+   ├─ SPEC-ARTIFACTS.md          团队成果区规格
    ├─ strings.md                 术语与文案表
-   ├─ index.next.html            实现原稿（已并入 index.html）
-   ├─ index.v1.html              第一次交付的原稿
+   ├─ index.next.html            第一次实现的原稿
+   ├─ index.v1.html              第一次交付的版本
+   ├─ index.v2.html              加入成果区之前的版本
    ├─ REPORT-ku.md               小酷第一次实现报告
    ├─ REPORT-ku2.md              返工报告
+   ├─ REPORT-ku3.md              成果区实现报告
    └─ prompt-*.md                派活单原文
 ```
 

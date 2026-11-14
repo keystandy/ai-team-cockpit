@@ -21,3 +21,7 @@ build/dom.txt
 .idea/
 .DS_Store
 Thumbs.db
+build/final*.png
+build/full.png
+build/art-*.png
+build/d-*.txt
