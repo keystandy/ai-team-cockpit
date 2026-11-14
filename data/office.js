@@ -1,9 +1,9 @@
 /* 磨坊办公室 · 数据快照
-   由 probe.mjs 自动生成（2026-11-14 21:00），也可手改。
+   由 probe.mjs 自动生成（2026-11-15 06:26），也可手改。
    注意：这是 JS 而非 JSON —— 为了在 file:// 下也能直接双击打开（无 CORS 限制）。 */
 
 window.OFFICE = {
-  "generatedAt": "2026-11-14 21:00",
+  "generatedAt": "2026-11-15 06:26",
   "connectivity": "4/4 员工 + 老板",
   "agents": [
     {
@@ -36,7 +36,7 @@ window.OFFICE = {
       "logo": "deepseek",
       "version": "0.2.2-rc.3",
       "status": "online",
-      "ms": 464,
+      "ms": 5748,
       "tokens": null,
       "caps": [
         "长链推理",
@@ -44,7 +44,7 @@ window.OFFICE = {
         "读写本地文件",
         "起子进程"
       ],
-      "last": "21:00 版本探活 / 464ms",
+      "last": "06:26 实呼成功 / 5.7s",
       "latency": "单次冷启动 30s 级",
       "limit": "不能多轮对话；不读凭据文件，须注入 DEEPSEEK_API_KEY",
       "cmd": "export DSH_HOME='E:\\DSHDockData\\dsh-home'\nexport DEEPSEEK_API_KEY=$(grep -oE 'sk-[A-Za-z0-9_-]{20,}' \"$DSH_HOME/.credentials.yaml\" | head -1)\nELECTRON_RUN_AS_NODE=1 \"D:\\Program Files\\DSH NEXT\\DSH NEXT.exe\" \"D:\\Program Files\\DSH NEXT\\resources\\app.asar\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js\" --profile headless \"任务\""
@@ -57,7 +57,7 @@ window.OFFICE = {
       "logo": "openai",
       "version": "0.169.0-alpha.11.1",
       "status": "online",
-      "ms": 264,
+      "ms": 44402,
       "tokens": null,
       "caps": [
         "改代码",
@@ -65,7 +65,7 @@ window.OFFICE = {
         "批量文件",
         "reasoning high"
       ],
-      "last": "21:00 版本探活 / 264ms",
+      "last": "06:26 实呼成功 / 44.4s",
       "latency": "12s / 300~8000 tok",
       "limit": "仅 danger-full-access 可用，必须用 -C 锁目录并事后核对改动",
       "cmd": "\"D:\\WindowsApps\\OpenAI.Codex_26.1111.2228.0_x64__2p2nqsd0c76g0\\app\\resources\\codex.exe\" exec --skip-git-repo-check --sandbox danger-full-access -C \"E:\\WorkBuddy工作空间\\ai-team\\cockpit\" \"任务\" < /dev/null"
@@ -78,7 +78,7 @@ window.OFFICE = {
       "logo": "claude",
       "version": "2.1.318",
       "status": "online",
-      "ms": 246,
+      "ms": 5050,
       "tokens": null,
       "caps": [
         "长文审阅",
@@ -86,7 +86,7 @@ window.OFFICE = {
         "对比差异",
         "严谨写作"
       ],
-      "last": "21:00 版本探活 / 246ms",
+      "last": "06:26 实呼成功 / 5.0s",
       "latency": "秒级 · 按量",
       "limit": "非交互模式，不能中途追问；不主动跨盘操作",
       "cmd": "cd \"E:\\WorkBuddy工作空间\\ai-team\\cockpit\" && \"D:\\Programs\\claude-code\\claude.exe\" -p \"任务\" < /dev/null"
@@ -99,8 +99,8 @@ window.OFFICE = {
       "logo": "doubao",
       "version": "doubao-seed-2-1-pro-260915",
       "status": "online",
-      "ms": 366,
-      "tokens": null,
+      "ms": 1714,
+      "tokens": 52,
       "caps": [
         "中文表达",
         "看图",
@@ -108,7 +108,7 @@ window.OFFICE = {
         "落盘",
         "16 个模型"
       ],
-      "last": "21:00 鉴权通过 / 366ms",
+      "last": "06:26 实呼成功 / 52 tok / 1.7s",
       "latency": "问答 2s / 联网 25s",
       "limit": "无工具执行能力，碰不到文件系统；联网一次约 8000 tokens",
       "cmd": "node \"E:\\WorkBuddy工作空间\\doubao-bridge\\doubao.mjs\" \"任务\" --web"
@@ -145,6 +145,62 @@ window.OFFICE = {
     "free": "联网 20K 次/月"
   },
   "log": [
+    {
+      "t": "06:26",
+      "who": "小深",
+      "msg": "探活通过：实呼成功 / 5.7s",
+      "ok": true,
+      "bad": false
+    },
+    {
+      "t": "06:26",
+      "who": "小酷",
+      "msg": "探活通过：实呼成功 / 44.4s",
+      "ok": true,
+      "bad": false
+    },
+    {
+      "t": "06:26",
+      "who": "小克",
+      "msg": "探活通过：实呼成功 / 5.0s",
+      "ok": true,
+      "bad": false
+    },
+    {
+      "t": "06:26",
+      "who": "小豆",
+      "msg": "探活通过：实呼成功 / 52 tok / 1.7s",
+      "ok": true,
+      "bad": false
+    },
+    {
+      "t": "06:26",
+      "who": "小深",
+      "msg": "探活通过：版本探活 / 1.0s",
+      "ok": true,
+      "bad": false
+    },
+    {
+      "t": "06:26",
+      "who": "小酷",
+      "msg": "探活通过：版本探活 / 902ms",
+      "ok": true,
+      "bad": false
+    },
+    {
+      "t": "06:26",
+      "who": "小克",
+      "msg": "探活通过：版本探活 / 894ms",
+      "ok": true,
+      "bad": false
+    },
+    {
+      "t": "06:26",
+      "who": "小豆",
+      "msg": "探活通过：鉴权通过 / 309ms",
+      "ok": true,
+      "bad": false
+    },
     {
       "t": "21:00",
       "who": "小深",

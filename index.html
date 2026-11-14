@@ -72,7 +72,8 @@ body {
 }
 
 button,
-textarea {
+textarea,
+input {
   font: inherit;
 }
 
@@ -86,6 +87,7 @@ strong {
 
 button:focus-visible,
 textarea:focus-visible,
+input:focus-visible,
 [tabindex]:focus-visible {
   outline: 2px solid var(--primary);
   outline-offset: 2px;
@@ -845,6 +847,11 @@ p {
   color: var(--status-online);
 }
 
+.artifact-tag.is-accepted {
+  background: var(--status-online-soft);
+  color: var(--status-online);
+}
+
 .artifact-actions {
   grid-column: 2;
   grid-row: 1;
@@ -889,6 +896,12 @@ p {
   align-items: center;
   gap: var(--space-1);
   flex: none;
+}
+
+.artifact-acceptance-evidence {
+  flex-basis: 100%;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
 }
 
 .artifact-avatar {
@@ -1011,8 +1024,12 @@ p {
   overflow-wrap: anywhere;
 }
 
-.event.is-done .event-copy {
+.event.is-success .event-copy {
   color: var(--status-online);
+}
+
+.event.is-pending .event-copy {
+  color: var(--status-busy);
 }
 
 .event.is-failed .event-copy {
@@ -1085,7 +1102,7 @@ p {
 }
 
 .ticket {
-  padding: var(--space-3);
+  padding: var(--space-4);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-md);
   background: var(--bg-card);
@@ -1106,6 +1123,10 @@ p {
 
 .ticket.is-failed {
   border-color: var(--status-failed);
+}
+
+.ticket.is-accepted {
+  border-color: var(--border-strong);
 }
 
 .ticket-head {
@@ -1135,7 +1156,16 @@ p {
   color: var(--status-busy);
 }
 
-.ticket-status.is-done {
+.ticket-status.is-waiting {
+  color: var(--text-secondary);
+}
+
+.ticket-status.is-pending {
+  background: var(--status-busy-soft);
+  color: var(--status-busy);
+}
+
+.ticket-status.is-accepted {
   background: var(--status-online-soft);
   color: var(--status-online);
 }
@@ -1145,7 +1175,37 @@ p {
   color: var(--status-failed);
 }
 
-.ticket-owner,
+.ticket-person-list {
+  margin-top: var(--space-2);
+  display: grid;
+  gap: var(--space-1);
+}
+
+.ticket-person {
+  min-width: 0;
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-1);
+  flex-wrap: wrap;
+  color: var(--text-secondary);
+}
+
+.ticket-person-label {
+  flex: none;
+}
+
+.ticket-person-value {
+  min-width: 0;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.ticket-reviewer-state {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
 .ticket-description,
 .ticket-failure {
   margin-top: var(--space-2);
@@ -1157,8 +1217,83 @@ p {
   color: var(--status-failed);
 }
 
+.ticket-info-block {
+  margin-top: var(--space-3);
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+}
+
+.ticket-info-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+}
+
+.ticket-info-value {
+  margin-top: var(--space-1);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+  white-space: pre-wrap;
+}
+
+.ticket-evidence-badge {
+  flex: none;
+  padding: var(--space-0) var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+}
+
+.ticket-info-value.is-empty {
+  color: var(--text-placeholder);
+}
+
+.ticket-action-hint.is-failed {
+  color: var(--status-failed);
+}
+
+.ticket-history {
+  margin-top: var(--space-4);
+  padding-top: var(--space-3);
+  border-top: 1px solid var(--border-subtle);
+}
+
+.ticket-history-item + .ticket-history-item {
+  margin-top: var(--space-3);
+}
+
+.ticket-history-label {
+  color: var(--text-secondary);
+}
+
+.ticket-history-label.is-returned {
+  color: var(--status-failed);
+}
+
+.ticket-history-copy {
+  margin-top: var(--space-1);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.ticket-history-meta {
+  margin-top: var(--space-1);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.ticket-action-area {
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border-subtle);
+}
+
 .command-block {
-  margin-top: var(--space-2);
+  margin-top: var(--space-3);
   border: 1px solid var(--border-strong);
   border-radius: var(--radius-sm);
   background: var(--bg-subtle);
@@ -1188,10 +1323,85 @@ p {
 }
 
 .ticket-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-4);
+}
+
+.ticket-actions .button {
+  min-height: 32px;
+}
+
+.ticket-actions .button:disabled {
+  border-color: var(--border-strong);
+  background: var(--bg-subtle);
+  color: var(--text-placeholder);
+  cursor: default;
+}
+
+.button-review-return {
+  border-color: var(--border-strong);
+  background: var(--bg-card);
+  color: var(--status-failed);
+}
+
+.button-review-return:hover {
+  background: var(--bg-subtle);
+}
+
+.button-review-pass {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--bg-card);
+}
+
+.button-review-pass:hover {
+  border-color: var(--primary-hover);
+  background: var(--primary-hover);
+}
+
+.ticket-action-hint {
+  margin-top: var(--space-2);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.return-editor {
+  margin-bottom: var(--space-3);
+  animation: return-editor-in var(--duration-expand) var(--ease-out) 1;
+}
+
+.return-input {
+  width: 100%;
+  height: 32px;
+  padding: var(--space-0) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
+.return-input::placeholder {
+  color: var(--text-placeholder);
+}
+
+.return-input:focus {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.return-editor-actions {
   margin-top: var(--space-2);
   display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
+  justify-content: flex-end;
+  gap: var(--space-4);
+}
+
+.return-error {
+  margin-top: var(--space-1);
+  color: var(--status-failed);
 }
 
 .dialog {
@@ -1317,6 +1527,17 @@ p {
 }
 
 @keyframes artifact-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes return-editor-in {
   from {
     opacity: 0;
     transform: translateY(-4px);
@@ -1671,7 +1892,8 @@ p {
   const STATUS = {
     waiting: { label: "等待中", symbol: "○", className: "status-waiting", ticketClass: "is-waiting" },
     running: { label: "进行中", symbol: "▶", className: "status-busy", ticketClass: "is-running" },
-    done: { label: "已完成", symbol: "✓", className: "status-online", ticketClass: "is-done" },
+    pending: { label: "待验收", symbol: "□", className: "status-busy", ticketClass: "is-pending" },
+    accepted: { label: "已验收", symbol: "✓", className: "status-online", ticketClass: "is-accepted" },
     failed: { label: "失败", symbol: "×", className: "status-failed", ticketClass: "is-failed" }
   };
 
@@ -1733,6 +1955,8 @@ p {
   let newArtifactId = null;
   let artifactDialogTrigger = null;
   const demoArtifactJobs = new Set();
+  const returnEditors = new Set();
+  const returnDrafts = new Map();
 
   function escapeHtml(value) {
     return String(value == null ? "" : value).replace(/[&<>"']/g, (character) => ({
@@ -1800,6 +2024,10 @@ p {
 
   function sortArtifacts(items) {
     return [...items].sort((left, right) => {
+      if (Boolean(left.accepted) !== Boolean(right.accepted)) return left.accepted ? -1 : 1;
+      if (left.accepted && right.accepted) {
+        return String(right.acceptedAt || right.time || "").localeCompare(String(left.acceptedAt || left.time || ""));
+      }
       if (Boolean(left.real) !== Boolean(right.real)) return left.real ? -1 : 1;
       return String(right.time || "").localeCompare(String(left.time || ""));
     });
@@ -1819,6 +2047,12 @@ p {
   }
 
   function artifactTagMarkup(artifact) {
+    if (artifact.accepted) {
+      return `
+        <span class="artifact-tag is-accepted t4">✓ 已验收</span>
+        <span class="artifact-tag t4">◇ 演示</span>
+      `;
+    }
     return artifact.real
       ? `<span class="artifact-tag is-real t4">✓ 本机文件</span>`
       : `<span class="artifact-tag t4">◇ 演示</span>`;
@@ -1826,11 +2060,28 @@ p {
 
   function artifactRowMarkup(artifact) {
     const owner = artifactOwner(artifact);
+    const reviewer = artifact.reviewerId ? agentById.get(artifact.reviewerId) : null;
     const isReal = Boolean(artifact.real);
     const relativePath = String(artifact.path || "");
     const absolutePath = isReal && relativePath ? absoluteArtifactPath(relativePath) : "";
     const source = escapeHtml(artifact.source || "");
     const title = escapeHtml(artifact.title || "未命名成果");
+    const acceptedMeta = artifact.accepted
+      ? `
+          <span aria-hidden="true">·</span>
+          <span>验收人：${escapeHtml(reviewer ? reviewer.name : "未记录")}</span>
+          <span aria-hidden="true">·</span>
+          <time datetime="${escapeHtml(String(artifact.acceptedAt || "").replace(" ", "T"))}">${escapeHtml(artifact.acceptedAt || artifact.time || "")}</time>
+        `
+      : `
+          <span aria-hidden="true">·</span>
+          <span>${source}</span>
+          <span aria-hidden="true">·</span>
+          <time datetime="${escapeHtml(String(artifact.time || "").replace(" ", "T"))}">${escapeHtml(artifact.time || "")}</time>
+        `;
+    const acceptedEvidence = artifact.accepted && artifact.evidence
+      ? `<span class="artifact-acceptance-evidence">证据：${escapeHtml(artifact.evidence)}</span>`
+      : "";
     const copyLabel = `复制${artifact.title || "未命名成果"}路径`;
     const demoCopy = isReal
       ? `<button class="button t3" type="button" data-artifact-action="copy" data-artifact-id="${escapeHtml(artifact.id)}" aria-label="${escapeHtml(copyLabel)}" title="${escapeHtml(absolutePath)}">复制路径</button>`
@@ -1858,10 +2109,8 @@ p {
             <span class="artifact-avatar" aria-hidden="true">${logoMarkup(owner)}</span>
             <span>${escapeHtml(owner.name)}</span>
           </span>
-          <span aria-hidden="true">·</span>
-          <span>${source}</span>
-          <span aria-hidden="true">·</span>
-          <time datetime="${escapeHtml(String(artifact.time || "").replace(" ", "T"))}">${escapeHtml(artifact.time || "")}</time>
+          ${acceptedMeta}
+          ${acceptedEvidence}
           ${pathMarkup ? `<span aria-hidden="true">·</span>${pathMarkup}` : ""}
         </div>
       </article>
@@ -1907,7 +2156,7 @@ p {
         : `
           <div class="artifact-empty t4">
             <strong class="t3">成果会出现在这里。</strong>
-            <span>小棒派活、成员交结果后，这里会列出能打开的文件。</span>
+            <span>任务通过验收后，这里会列出可查看的成果。</span>
           </div>
         `;
     } else {
@@ -1946,27 +2195,28 @@ p {
     elements.artifactDialogClose.focus();
   }
 
-  async function maybeAppendDemoArtifact(batch) {
-    if (!batch.length || !batch.every((task) => task.status === "done")) return;
-    const jobId = batch[0].jobId;
-    if (demoArtifactJobs.has(jobId)) return;
-    demoArtifactJobs.add(jobId);
-    await wait(200);
-    const jobName = batch[0].jobName;
-    const subtaskNames = Array.from(new Set(batch.map((task) => task.title))).join("、");
+  function createAcceptedArtifact(task) {
+    if (demoArtifactJobs.has(task.id)) return;
+    demoArtifactJobs.add(task.id);
+    const reviewer = reviewerForTask(task);
     const artifact = {
-      id: `demo-artifact-${jobId}`,
-      title: jobName,
-      ownerId: batch[0].ownerId,
-      source: `派活单「${jobName}」/ 子任务「${subtaskNames}」`,
-      time: formatDateTime(new Date()),
+      id: `demo-artifact-${task.id}`,
+      title: `${task.jobName} · ${task.title}`,
+      ownerId: task.ownerId,
+      reviewerId: task.reviewerId,
+      acceptedAt: task.acceptedAt,
+      accepted: true,
+      evidence: task.evidence,
+      source: "验收通过 / 演示过程",
+      time: task.acceptedAt,
       path: "",
       real: false,
-      summary: `派活单「${jobName}」的 ${batch.length} 个子任务已完成。这是演示流程生成的内容，不是本机文件。`,
+      summary: `「${task.title}」已由${reviewer ? reviewer.name : "指定验收人"}验收通过。这是演示流程生成的内容，不是本机文件。`,
       highlights: [
-        `派活单：${jobName}`,
-        `子任务：${subtaskNames}`,
-        "全部子任务已完成"
+        `负责人：${memberById(task.ownerId).name}`,
+        `验收人：${reviewer ? reviewer.name : "未记录"}（老板代验收）`,
+        `验收条件：${task.acceptanceCondition}`,
+        `证据：${task.evidence}`
       ]
     };
     artifacts.push(artifact);
@@ -1978,8 +2228,9 @@ p {
     const ownTasks = tasks.filter((task) => task.ownerId === agentId);
     return ownTasks.find((task) => task.status === "running")
       || ownTasks.find((task) => task.status === "waiting")
+      || ownTasks.find((task) => task.status === "pending")
       || ownTasks.find((task) => task.status === "failed")
-      || ownTasks.find((task) => task.status === "done")
+      || ownTasks.find((task) => task.status === "accepted")
       || null;
   }
 
@@ -1997,6 +2248,34 @@ p {
         ? { symbol: "◐", label: "忙碌", className: "status-busy" }
         : { symbol: "○", label: "离线", className: "status-offline" };
     return `<span class="status-symbol ${meta.className}" aria-hidden="true">${meta.symbol}</span><span>${meta.label}</span>`;
+  }
+
+  function reviewerForTask(task) {
+    return task.reviewerId ? agentById.get(task.reviewerId) || null : null;
+  }
+
+  function pickReviewer(ownerId) {
+    const candidates = team
+      .filter((agent) => agent.id !== ownerId && memberStatus(agent.id) !== "offline")
+      .map((agent, index) => ({ agent, index, status: memberStatus(agent.id) }));
+    candidates.sort((left, right) => {
+      const rank = (status) => status === "online" ? 0 : 1;
+      return rank(left.status) - rank(right.status) || left.index - right.index;
+    });
+    return candidates[0] ? candidates[0].agent : null;
+  }
+
+  function acceptanceConditionForTask(task) {
+    return {
+      planning: "交付包含目标、步骤、负责人和可验证的完成标准，无未说明缺口。",
+      execution: "交付覆盖任务目标与约束，关键改动可逐项核对，未发现阻断问题。",
+      review: "逐项列出结论、依据与风险，关键问题有定位和修订建议。",
+      search: "关键结论附来源与时间，信息可复核，摘要与原始结果一致。"
+    }[task.kind];
+  }
+
+  function demoEvidenceForTask(task) {
+    return `演示证据：${task.title} 的执行输出摘要（第 1-12 行）`;
   }
 
   function taskStatusMarkup(status) {
@@ -2024,7 +2303,11 @@ p {
       const taskCopy = current
         ? current.status === "failed"
           ? "这项没做成，点开看原因。"
-          : current.title
+          : current.status === "pending"
+            ? `□ 待验收 · ${current.title}`
+            : current.status === "accepted"
+              ? `✓ 已验收 · ${current.title}`
+              : current.title
         : "暂无任务";
       const statusClass = status === "online" ? "status-online" : status === "busy" ? "status-busy" : "status-offline";
       const statusSymbol = status === "online" ? "●" : status === "busy" ? "◐" : "○";
@@ -2081,8 +2364,10 @@ p {
       elements.hubMeta.textContent = `失败 · ${tasks.filter((task) => task.status === "failed").length} 项`;
     } else if (hasRunning) {
       elements.hubMeta.textContent = `进行中 · ${tasks.filter((task) => task.status === "running").length} 项`;
-    } else if (tasks.every((task) => task.status === "done")) {
-      elements.hubMeta.textContent = `已完成 · ${tasks.length} 项`;
+    } else if (tasks.every((task) => task.status === "accepted")) {
+      elements.hubMeta.textContent = `已验收 · ${tasks.length} 项`;
+    } else if (tasks.some((task) => task.status === "pending")) {
+      elements.hubMeta.textContent = `待验收 · ${tasks.filter((task) => task.status === "pending").length} 项`;
     } else {
       elements.hubMeta.textContent = `等待中 · ${tasks.filter((task) => task.status === "waiting").length} 项`;
     }
@@ -2092,8 +2377,9 @@ p {
     } else {
       const states = [
         ["running", "进行中"],
+        ["pending", "待验收"],
+        ["accepted", "已验收"],
         ["waiting", "等待中"],
-        ["done", "已完成"],
         ["failed", "失败"]
       ]
         .map(([status, label]) => {
@@ -2194,7 +2480,7 @@ p {
       || agentTasks.find((task) => task.status === "waiting")
       || agentTasks.find((task) => task.status === "failed")
       || null;
-    const doneCount = agentTasks.filter((task) => task.status === "done").length;
+    const submittedCount = agentTasks.filter((task) => task.status === "pending" || task.status === "accepted").length;
     const lastFailure = [...agentTasks].reverse().find((task) => task.failureHistory.length || task.status === "failed");
     const lastFailureReason = lastFailure
       ? lastFailure.failureReason
@@ -2229,7 +2515,7 @@ p {
       <dl class="detail-fields t4">
         <div class="detail-row"><dt>状态</dt><dd class="member-state-line"><span class="status-symbol ${statusMeta.className}" aria-hidden="true">${statusMeta.symbol}</span><span>${statusMeta.label}</span></dd></div>
         <div class="detail-row"><dt>当前任务</dt><dd>${escapeHtml(currentCopy)}</dd></div>
-        <div class="detail-row"><dt>已交活</dt><dd>已交活：${doneCount}</dd></div>
+        <div class="detail-row"><dt>已交活</dt><dd>已交活：${submittedCount}</dd></div>
       </dl>
       ${offlineNotice}
       ${failureNotice}
@@ -2254,28 +2540,116 @@ p {
     }
     elements.ticketList.innerHTML = tasks.map((task) => {
       const agent = agentById.get(task.ownerId) || team[0] || hub;
+      const reviewer = reviewerForTask(task);
       const meta = STATUS[task.status];
       const isSelected = selectedAgentId === task.ownerId;
-      const failure = task.status === "failed"
-        ? `<p class="ticket-failure t4">失败原因：${escapeHtml(task.failureReason || "未返回失败原因")}</p>`
+      const evidence = String(task.evidence || "").trim();
+      const reviewerStatus = reviewer ? memberStatus(reviewer.id) : "offline";
+      const isReviewerOnline = Boolean(reviewer && reviewerStatus === "online");
+      const isEditingReturn = returnEditors.has(task.id);
+      const returnDraft = returnDrafts.get(task.id) || "";
+      const noReviewer = !reviewer;
+      const noEvidence = !evidence;
+      const passDisabled = noReviewer || !isReviewerOnline || noEvidence || isEditingReturn;
+      const returnDisabled = noReviewer || !isReviewerOnline || isEditingReturn;
+      let actionHint = reviewer
+        ? `老板将以${escapeHtml(reviewer.name)}身份执行验收；记录会标注“老板代验收”。`
         : "";
-      const actions = task.status === "failed"
+      let actionHintClass = "";
+      if (noReviewer) {
+        actionHint = "暂无其他在线成员可验收，请等待成员上线或改派负责人；负责人不能验收自己的活。";
+        actionHintClass = " is-failed";
+      } else if (noEvidence) {
+        actionHint = "证据为空，不能通过；请退回负责人补充文件路径（可带行号）或输出摘要。";
+        actionHintClass = " is-failed";
+      } else if (!isReviewerOnline) {
+        actionHint = "验收人离线，暂不能验收；可等待上线或改选在线验收人。";
+        actionHintClass = " is-failed";
+      }
+      const reviewerMarkup = reviewer
         ? `
+          <span class="ticket-person-value">${escapeHtml(reviewer.name)}</span>
+          <span aria-hidden="true">·</span>
+          <span class="ticket-reviewer-state">${memberStatusMarkup(reviewer.id)}</span>
+        `
+        : `<span class="ticket-person-value">暂无可选验收人</span>`;
+      const evidenceValue = evidence
+        ? escapeHtml(evidence)
+        : "未提供证据";
+      const returnHistory = (task.returnHistory || []).map((record) => {
+        const returner = agentById.get(record.reviewerId);
+        return `
+          <div class="ticket-history-item">
+            <div class="ticket-history-label is-returned t4">退回理由</div>
+            <p class="ticket-history-copy t3">${escapeHtml(record.reason)}</p>
+            <p class="ticket-history-meta t4">${escapeHtml(returner ? returner.name : "指定验收人")}退回给${escapeHtml(agent.name)} · ${escapeHtml(record.time)}</p>
+          </div>
+        `;
+      }).join("");
+      const acceptanceHistory = task.status === "accepted" && task.acceptedAt
+        ? `
+          <div class="ticket-history-item">
+            <div class="ticket-history-label t4">验收记录</div>
+            <p class="ticket-history-copy t3">${escapeHtml(reviewer ? reviewer.name : "指定验收人")}（老板代验收） · ${escapeHtml(task.acceptedAt)}</p>
+            <p class="ticket-history-meta t4">当轮证据：${escapeHtml(evidence)}</p>
+          </div>
+        `
+        : "";
+      const failureHistory = (task.failureHistory || []).map((record) => `
+        <div class="ticket-history-item">
+          <div class="ticket-history-label is-returned t4">失败历史</div>
+          <p class="ticket-history-copy t3">${escapeHtml(record.reason || "未返回失败原因")}</p>
+          <p class="ticket-history-meta t4">${escapeHtml(record.time || "")}</p>
+        </div>
+      `).join("");
+      const history = (returnHistory || acceptanceHistory || failureHistory)
+        ? `<div class="ticket-history">${returnHistory}${acceptanceHistory}${failureHistory}</div>`
+        : "";
+      let actions = "";
+      if (task.status === "pending") {
+        actions = `
+          <div class="ticket-action-area">
+            ${isEditingReturn ? `
+              <div class="return-editor">
+                <label class="sr-only" for="return-${escapeHtml(task.id)}">退回理由（必填）</label>
+                <input class="return-input t3" id="return-${escapeHtml(task.id)}" type="text" data-return-input="${escapeHtml(task.id)}" value="${escapeHtml(returnDraft)}" placeholder="写一句退回理由（必填）" autocomplete="off">
+                <div class="return-editor-actions">
+                  <button class="button button-text t3" type="button" data-action="cancel-return" data-task-id="${escapeHtml(task.id)}">取消</button>
+                  <button class="button button-review-return t3" type="button" data-action="confirm-return" data-task-id="${escapeHtml(task.id)}"${returnDraft.trim() ? "" : " disabled"}>确认退回</button>
+                </div>
+                <p class="return-error t4">退回理由不能为空。</p>
+              </div>
+            ` : ""}
+            <div class="ticket-actions">
+              <button class="button button-review-return t3" type="button" data-action="open-return" data-task-id="${escapeHtml(task.id)}"${returnDisabled ? " disabled" : ""}>以${escapeHtml(reviewer ? reviewer.name : "验收人")}身份退回</button>
+              <button class="button button-review-pass t3" type="button" data-action="accept" data-task-id="${escapeHtml(task.id)}"${passDisabled ? " disabled" : ""}>以${escapeHtml(reviewer ? reviewer.name : "验收人")}身份通过</button>
+            </div>
+            <p class="ticket-action-hint${actionHintClass} t4">${actionHint}</p>
+          </div>
+        `;
+      } else if (task.status === "failed") {
+        actions = `
           <div class="ticket-actions">
             <button class="button t4" type="button" data-action="retry" data-task-id="${escapeHtml(task.id)}">重试</button>
             <button class="button t4" type="button" data-action="reassign" data-task-id="${escapeHtml(task.id)}">改派</button>
           </div>
-        `
-        : "";
+        `;
+      }
       return `
-        <article class="ticket${isSelected ? " is-selected" : ""}${task.status === "failed" ? " is-failed" : ""}" data-task-id="${escapeHtml(task.id)}">
+        <article class="ticket${isSelected ? " is-selected" : ""}${task.status === "failed" ? " is-failed" : ""}${task.status === "accepted" ? " is-accepted" : ""}" data-task-id="${escapeHtml(task.id)}">
           <div class="ticket-head">
-            <h3 class="ticket-title t3">${escapeHtml(task.title)} · ${escapeHtml(agent.name)} · ${escapeHtml(meta.label)}</h3>
+            <h3 class="ticket-title t3">${escapeHtml(task.title)}</h3>
             <span class="ticket-status t4 ${meta.ticketClass}">${taskStatusMarkup(task.status)}</span>
           </div>
-          <p class="ticket-owner t4">负责人：${escapeHtml(agent.name)}</p>
-          <p class="ticket-description t4">${escapeHtml(task.title)}：${escapeHtml(truncate(task.originalText, 72))}</p>
-          ${failure}
+          <div class="ticket-person-list t4">
+            <p class="ticket-person"><span class="ticket-person-label">负责人：</span><span class="ticket-person-value">${escapeHtml(agent.name)}</span></p>
+            <p class="ticket-person"><span class="ticket-person-label">验收人：</span>${reviewerMarkup}</p>
+          </div>
+          <p class="ticket-description t4">${escapeHtml(task.originalText)}</p>
+          <div class="ticket-info-block">
+            <div class="ticket-info-head t4"><span>验收条件</span></div>
+            <p class="ticket-info-value t3">${escapeHtml(task.acceptanceCondition || "等待生成可核对的交付标准。")}</p>
+          </div>
           <div class="command-block">
             <div class="command-head t4">
               <span>命令</span>
@@ -2283,6 +2657,14 @@ p {
             </div>
             <pre class="command-text">${escapeHtml(commandForTask(task, agent))}</pre>
           </div>
+          <div class="ticket-info-block">
+            <div class="ticket-info-head t4">
+              <span>证据</span>
+              ${evidence ? `<span class="ticket-evidence-badge">演示</span>` : ""}
+            </div>
+            <p class="ticket-info-value t3${evidence ? "" : " is-empty"}">${evidenceValue || "等待交活后生成演示证据。"}</p>
+          </div>
+          ${history}
           ${actions}
         </article>
       `;
@@ -2322,10 +2704,11 @@ p {
 
   function appendEvent(who, message, tone) {
     const item = document.createElement("li");
-    item.className = `event is-new${tone === "done" ? " is-done" : tone === "failed" ? " is-failed" : ""}`;
+    const actorMarkup = who ? `<strong>${escapeHtml(who)}</strong>` : "";
+    item.className = `event is-new${tone === "success" ? " is-success" : tone === "pending" ? " is-pending" : tone === "failed" ? " is-failed" : ""}`;
     item.innerHTML = `
       <span class="event-time t4">${nowTime()}</span>
-      <span class="event-copy t4"><strong>${escapeHtml(who)}</strong>${escapeHtml(message)}</span>
+      <span class="event-copy t4">${actorMarkup}${escapeHtml(message)}</span>
     `;
     elements.eventFeed.prepend(item);
     eventSequence += 1;
@@ -2379,6 +2762,14 @@ p {
         ownerId: owner.id,
         status: "waiting",
         assignmentNote: offline ? "待成员上线" : "",
+        reviewerId: null,
+        acceptanceCondition: acceptanceConditionForTask({ kind }),
+        evidence: "",
+        submittedAt: null,
+        acceptedAt: null,
+        acceptedByBoss: false,
+        reviewHistory: [],
+        returnHistory: [],
         failureReason: null,
         failureHistory: [],
         shouldFail: shouldFail && index === failKindIndex,
@@ -2410,11 +2801,24 @@ p {
       renderAll();
       appendEvent(owner.name, `${task.title}失败：${task.failureReason}`, "failed");
     } else {
-      task.status = "done";
-      task.result = `${task.title}已处理，结果已交回小棒。`;
+      const reviewer = pickReviewer(task.ownerId);
+      const submittedAt = nowTime();
+      task.status = "pending";
+      task.reviewerId = reviewer ? reviewer.id : null;
+      task.evidence = demoEvidenceForTask(task);
+      task.submittedAt = submittedAt;
+      task.result = `${task.title}已交回，等待验收。`;
+      task.reviewHistory.push({
+        reviewerId: task.reviewerId,
+        evidence: task.evidence,
+        condition: task.acceptanceCondition,
+        submittedAt,
+        outcome: "pending",
+        acceptedByBoss: false
+      });
       renderAll();
-      appendEvent(owner.name, "交活", "done");
-      appendEvent(owner.name, `「${task.title}」已完成`, "done");
+      appendEvent(owner.name, `交活：「${task.title}」`, "pending");
+      appendEvent("", `「${task.title}」待验收，验收人：${reviewer ? reviewer.name : "暂无可选验收人"}`, "pending");
     }
     const runningTask = tasks.find((item) => item.status === "running");
     if (runningTask) selectedAgentId = runningTask.ownerId;
@@ -2424,7 +2828,6 @@ p {
   async function runBatch(batch) {
     const runnable = batch.filter((task) => memberStatus(task.ownerId) !== "offline");
     await Promise.all(runnable.map((task, index) => runTask(task, index)));
-    await maybeAppendDemoArtifact(batch);
     artifactGenerationActive = false;
     renderAll();
     publishLocked = false;
@@ -2504,12 +2907,14 @@ p {
     publishLocked = true;
     task.status = "waiting";
     task.failureReason = null;
+    task.reviewerId = null;
+    task.evidence = "";
+    task.submittedAt = null;
+    task.acceptedAt = null;
     selectedAgentId = task.ownerId;
     renderAll();
     renderPublishControls();
     await runTask(task, 0);
-    const jobTasks = tasks.filter((item) => item.jobId === task.jobId);
-    await maybeAppendDemoArtifact(jobTasks);
     renderArtifacts();
     publishLocked = false;
     renderPublishControls();
@@ -2532,17 +2937,96 @@ p {
     task.ownerId = replacement.id;
     task.status = "waiting";
     task.failureReason = null;
+    task.reviewerId = null;
+    task.evidence = "";
+    task.submittedAt = null;
+    task.acceptedAt = null;
     selectedAgentId = replacement.id;
     appendEvent(hub.name, `把「${task.title}」分给${replacement.name}`);
     renderAll();
     publishLocked = true;
     renderPublishControls();
     await runTask(task, 0);
-    const jobTasks = tasks.filter((item) => item.jobId === task.jobId);
-    await maybeAppendDemoArtifact(jobTasks);
     renderArtifacts();
     publishLocked = false;
     renderPublishControls();
+  }
+
+  function acceptTask(task) {
+    if (!task || task.status !== "pending") return;
+    const reviewer = reviewerForTask(task);
+    const evidence = String(task.evidence || "").trim();
+    if (!reviewer || memberStatus(reviewer.id) !== "online" || !evidence) return;
+
+    const acceptedAt = nowTime();
+    task.status = "accepted";
+    task.acceptedAt = acceptedAt;
+    task.acceptedByBoss = true;
+    const currentReview = task.reviewHistory[task.reviewHistory.length - 1];
+    if (currentReview) {
+      currentReview.outcome = "accepted";
+      currentReview.decidedAt = acceptedAt;
+      currentReview.acceptedByBoss = true;
+    }
+    returnEditors.delete(task.id);
+    returnDrafts.delete(task.id);
+    createAcceptedArtifact(task);
+    selectedAgentId = task.ownerId;
+    renderAll();
+    appendEvent(reviewer.name, `验收通过：「${task.title}」；证据：${evidence}`, "success");
+  }
+
+  function openReturnEditor(task) {
+    if (!task || task.status !== "pending") return;
+    const reviewer = reviewerForTask(task);
+    if (!reviewer || memberStatus(reviewer.id) !== "online") return;
+    returnEditors.add(task.id);
+    returnDrafts.set(task.id, "");
+    renderAll();
+    window.requestAnimationFrame(() => {
+      const input = elements.ticketList.querySelector(`[data-return-input="${task.id}"]`);
+      if (input) input.focus();
+    });
+  }
+
+  function cancelReturnEditor(task) {
+    if (!task) return;
+    returnEditors.delete(task.id);
+    returnDrafts.delete(task.id);
+    renderAll();
+    const button = elements.ticketList.querySelector(`[data-action="open-return"][data-task-id="${task.id}"]`);
+    if (button) button.focus();
+  }
+
+  function returnTask(task) {
+    if (!task || task.status !== "pending") return;
+    const reviewer = reviewerForTask(task);
+    const reason = String(returnDrafts.get(task.id) || "").trim();
+    if (!reviewer || memberStatus(reviewer.id) !== "online" || !reason) return;
+
+    const returnedAt = nowTime();
+    const owner = memberById(task.ownerId);
+    const currentReview = task.reviewHistory[task.reviewHistory.length - 1];
+    if (currentReview) {
+      currentReview.outcome = "returned";
+      currentReview.decidedAt = returnedAt;
+      currentReview.returnReason = reason;
+    }
+    task.returnHistory.unshift({
+      reviewerId: reviewer.id,
+      time: returnedAt,
+      reason
+    });
+    task.status = "waiting";
+    task.evidence = "";
+    task.submittedAt = null;
+    task.acceptedAt = null;
+    task.acceptedByBoss = false;
+    returnEditors.delete(task.id);
+    returnDrafts.delete(task.id);
+    selectedAgentId = task.ownerId;
+    renderAll();
+    appendEvent(reviewer.name, `退回「${task.title}」给${owner.name}：${reason}`, "failed");
   }
 
   async function copyText(text, button) {
@@ -2580,7 +3064,7 @@ p {
   function populateInitialEvents() {
     const log = Array.isArray(OFFICE.log) ? OFFICE.log.slice(0, 12) : [];
     [...log].reverse().forEach((entry) => {
-      appendEvent(entry.who || "系统", entry.msg || "", entry.bad ? "failed" : entry.ok ? "done" : "normal");
+      appendEvent(entry.who || "系统", entry.msg || "", entry.bad ? "failed" : entry.ok ? "success" : "normal");
     });
     if (!log.length) {
       elements.eventFeed.innerHTML = `<li class="empty-state t4">还没有新动静。</li>`;
@@ -2644,9 +3128,18 @@ p {
         await retryTask(task);
       } else if (actionButton.dataset.action === "reassign") {
         await reassignTask(task);
+      } else if (actionButton.dataset.action === "accept") {
+        acceptTask(task);
+      } else if (actionButton.dataset.action === "open-return") {
+        openReturnEditor(task);
+      } else if (actionButton.dataset.action === "cancel-return") {
+        cancelReturnEditor(task);
+      } else if (actionButton.dataset.action === "confirm-return") {
+        returnTask(task);
       }
       return;
     }
+    if (event.target.closest(".return-editor")) return;
     const ticket = event.target.closest(".ticket");
     if (ticket) {
       const task = tasks.find((item) => item.id === ticket.dataset.taskId);
@@ -2654,6 +3147,21 @@ p {
       selectedAgentId = task.ownerId;
       renderAll();
     }
+  });
+
+  elements.ticketList.addEventListener("input", (event) => {
+    const input = event.target.closest("[data-return-input]");
+    if (!input) return;
+    const taskId = input.dataset.returnInput;
+    const draft = input.value;
+    returnDrafts.set(taskId, draft);
+    const ticket = input.closest(".ticket");
+    const confirmButton = ticket
+      ? ticket.querySelector('[data-action="confirm-return"]')
+      : null;
+    if (confirmButton) confirmButton.disabled = !draft.trim();
+    const error = ticket ? ticket.querySelector(".return-error") : null;
+    if (error) error.hidden = Boolean(draft.trim());
   });
 
   document.querySelectorAll("[data-artifact-filter]").forEach((button) => {
