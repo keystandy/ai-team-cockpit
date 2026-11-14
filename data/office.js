@@ -47,7 +47,7 @@ window.OFFICE = {
       "last": "21:00 版本探活 / 464ms",
       "latency": "单次冷启动 30s 级",
       "limit": "不能多轮对话；不读凭据文件，须注入 DEEPSEEK_API_KEY",
-      "cmd": "export DSH_HOME='E:\\DSHDockData\\dsh-home'\nexport DEEPSEEK_API_KEY=$(grep -oE 'sk-[A-Za-z0-9_-]{20,}' \"$DSH_HOME/.credentials.yaml\" | head -1)\nELECTRON_RUN_AS_NODE=1 \"D:\\Program Files\\DSH NEXT\\DSH NEXT.exe\" \"…\\dsh\\lib\\bin.js\" --profile headless \"任务\""
+      "cmd": "export DSH_HOME='E:\\DSHDockData\\dsh-home'\nexport DEEPSEEK_API_KEY=$(grep -oE 'sk-[A-Za-z0-9_-]{20,}' \"$DSH_HOME/.credentials.yaml\" | head -1)\nELECTRON_RUN_AS_NODE=1 \"D:\\Program Files\\DSH NEXT\\DSH NEXT.exe\" \"D:\\Program Files\\DSH NEXT\\resources\\app.asar\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js\" --profile headless \"任务\""
     },
     {
       "id": "ku",
@@ -68,7 +68,7 @@ window.OFFICE = {
       "last": "21:00 版本探活 / 264ms",
       "latency": "12s / 300~8000 tok",
       "limit": "仅 danger-full-access 可用，必须用 -C 锁目录并事后核对改动",
-      "cmd": "\"…\\codex.exe\" exec --skip-git-repo-check \\\n  --sandbox danger-full-access -C \"工作目录\" \"任务\" < /dev/null"
+      "cmd": "\"D:\\WindowsApps\\OpenAI.Codex_26.1111.2228.0_x64__2p2nqsd0c76g0\\app\\resources\\codex.exe\" exec --skip-git-repo-check --sandbox danger-full-access -C \"E:\\WorkBuddy工作空间\\ai-team\\cockpit\" \"任务\" < /dev/null"
     },
     {
       "id": "ke",
@@ -89,7 +89,7 @@ window.OFFICE = {
       "last": "21:00 版本探活 / 246ms",
       "latency": "秒级 · 按量",
       "limit": "非交互模式，不能中途追问；不主动跨盘操作",
-      "cmd": "cd \"工作目录\" && claude -p \"任务\" < /dev/null"
+      "cmd": "cd \"E:\\WorkBuddy工作空间\\ai-team\\cockpit\" && \"D:\\Programs\\claude-code\\claude.exe\" -p \"任务\" < /dev/null"
     },
     {
       "id": "dou",
@@ -111,7 +111,7 @@ window.OFFICE = {
       "last": "21:00 鉴权通过 / 366ms",
       "latency": "问答 2s / 联网 25s",
       "limit": "无工具执行能力，碰不到文件系统；联网一次约 8000 tokens",
-      "cmd": "cd \"E:\\WorkBuddy工作空间\\doubao-bridge\"\nnode doubao.mjs \"问题\" --image 图.png --web --out 路径.md"
+      "cmd": "node \"E:\\WorkBuddy工作空间\\doubao-bridge\\doubao.mjs\" \"任务\" --web"
     }
   ],
   "routing": [

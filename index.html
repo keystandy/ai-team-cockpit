@@ -1638,6 +1638,13 @@ p {
   const initialStatus = new Map(agents.map((agent) => [agent.id, agent.status || "online"]));
 
   const KIND_META = {
+    planning: {
+      title: "拆解任务",
+      word: "拆解",
+      ownerId: "shen",
+      fallbackOwnerId: "ku",
+      duration: 1800
+    },
     execution: {
       title: "执行任务",
       word: "执行",
@@ -2340,14 +2347,17 @@ p {
   }
 
   function detectKinds(text) {
-    const kinds = [];
     const searchText = text.replace(/检查|审查|复查|复核/g, "");
-    if (/写|改|实现/.test(text)) kinds.push("execution");
-    if (/审|检查|校对/.test(text)) kinds.push("review");
-    if (/查|最新|联网/.test(searchText)) kinds.push("search");
-    if (!kinds.includes("execution")) kinds.unshift("execution");
-    if (!kinds.includes("review")) kinds.push("review");
-    return Array.from(new Set(kinds)).slice(0, 4);
+    const matched = new Set();
+    if (/方案|拆解|规划|结构|设计|思路|分析/.test(text)) matched.add("planning");
+    if (/写|改|实现/.test(text)) matched.add("execution");
+    if (/审|检查|校对/.test(text)) matched.add("review");
+    if (/查|最新|联网/.test(searchText)) matched.add("search");
+
+    const kinds = ["execution", "review"];
+    if (matched.has("planning")) kinds.unshift("planning");
+    if (matched.has("search")) kinds.push("search");
+    return kinds.slice(0, 4);
   }
 
   function createJob(text) {
