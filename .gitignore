@@ -8,6 +8,12 @@ node_modules/
 # 本机配置（含绝对路径，不提交）
 local.config.json
 
+# 中间产物：验收截图、测试副本、DOM dump（不进仓库）
+build/check-*.png
+build/v2-*.png
+build/_t.html
+build/dom.txt
+
 # 探活会重写 data/office.js，但它是仓库一部分，不忽略
 
 # 编辑器

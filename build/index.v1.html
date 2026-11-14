@@ -1,0 +1,2066 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 团队驾驶舱</title>
+<style>
+:root {
+  --bg-page: #F7F8FA;
+  --bg-card: #FFFFFF;
+  --bg-overlay: #FFFFFF;
+  --bg-subtle: #F3F4F6;
+  --border-strong: #E5E7EB;
+  --border-subtle: #F0F1F3;
+  --text-primary: #1F2937;
+  --text-secondary: #6B7280;
+  --text-placeholder: #9CA3AF;
+  --primary: #2563EB;
+  --primary-hover: #1D4ED8;
+  --primary-soft: #EFF6FF;
+  --status-online: #16A34A;
+  --status-busy: #D97706;
+  --status-offline: #9CA3AF;
+  --status-failed: #DC2626;
+  --status-online-soft: #F0FDF4;
+  --status-busy-soft: #FFFBEB;
+  --status-failed-soft: #FEF2F2;
+
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-round: 999px;
+
+  --space-0: 0;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 40px;
+  --space-9: 48px;
+
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --duration-hover: 120ms;
+  --duration-expand: 160ms;
+  --duration-overlay: 200ms;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 0;
+  background: var(--bg-page);
+}
+
+body {
+  min-width: 0;
+  min-height: 100vh;
+  margin: var(--space-0);
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+  font-variant-numeric: tabular-nums;
+}
+
+button,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+strong {
+  font-weight: 600;
+}
+
+button:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
+
+h1,
+h2,
+h3,
+p {
+  margin: var(--space-0);
+}
+
+.t1 {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 28px;
+}
+
+.t2 {
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 24px;
+}
+
+.t3 {
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 22px;
+}
+
+.t4 {
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 20px;
+}
+
+.t5 {
+  font-size: 24px;
+  font-weight: 600;
+  line-height: 32px;
+}
+
+.topbar {
+  min-height: 64px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-strong);
+}
+
+.topbar-inner {
+  width: 100%;
+  max-width: 1440px;
+  min-height: 64px;
+  margin: var(--space-0) auto;
+  padding: var(--space-0) var(--space-6);
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+}
+
+.brand {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.brand-logo,
+.logo-box {
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+
+.brand-logo {
+  width: 32px;
+  height: 32px;
+}
+
+.logo-box {
+  width: 32px;
+  height: 32px;
+}
+
+.brand-logo svg,
+.logo-box svg {
+  width: 24px;
+  height: 24px;
+  display: block;
+}
+
+.topbar-spacer {
+  flex: 1;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.online-pill,
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  min-height: 32px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-round);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  white-space: nowrap;
+}
+
+.status-symbol {
+  width: 12px;
+  height: 12px;
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  font-size: 12px;
+  line-height: 12px;
+}
+
+.status-online {
+  color: var(--status-online);
+}
+
+.status-busy {
+  color: var(--status-busy);
+}
+
+.status-offline {
+  color: var(--status-offline);
+}
+
+.status-failed {
+  color: var(--status-failed);
+}
+
+.status-waiting {
+  color: var(--text-secondary);
+}
+
+.sync-time {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.button {
+  position: relative;
+  min-height: 32px;
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  line-height: 22px;
+  transition:
+    color var(--duration-hover) var(--ease-out),
+    background-color var(--duration-hover) var(--ease-out),
+    border-color var(--duration-hover) var(--ease-out),
+    opacity var(--duration-hover) var(--ease-out);
+}
+
+.button::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+}
+
+.button:hover {
+  background: var(--bg-subtle);
+}
+
+.button-primary {
+  min-height: 40px;
+  padding: var(--space-2) var(--space-4);
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--bg-card);
+  font-weight: 600;
+}
+
+.button-primary:hover {
+  border-color: var(--primary-hover);
+  background: var(--primary-hover);
+}
+
+.button-primary:disabled {
+  border-color: var(--border-strong);
+  background: var(--bg-subtle);
+  color: var(--text-placeholder);
+  cursor: default;
+}
+
+.button-text {
+  border-color: transparent;
+  background: transparent;
+  color: var(--primary);
+}
+
+.button-text:hover {
+  border-color: transparent;
+  background: var(--bg-subtle);
+  color: var(--primary-hover);
+}
+
+.button-danger {
+  border-color: transparent;
+  background: transparent;
+  color: var(--status-failed);
+}
+
+.button-danger:hover {
+  border-color: transparent;
+  background: var(--status-failed-soft);
+  color: var(--status-failed);
+}
+
+.page {
+  width: 100%;
+  max-width: 1440px;
+  margin: var(--space-0) auto;
+  padding: var(--space-6);
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(640px, 1fr) 320px;
+  align-items: start;
+  gap: var(--space-7);
+  min-width: 0;
+}
+
+.main-column,
+.rail {
+  min-width: 0;
+}
+
+.main-column {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.page-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.heading-copy {
+  min-width: 0;
+}
+
+.heading-copy h2 {
+  color: var(--text-primary);
+}
+
+.task-summary {
+  margin-top: var(--space-1);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.flow-shell {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 0;
+}
+
+.flow-lines {
+  position: absolute;
+  inset: var(--space-0);
+  z-index: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.connector {
+  fill: none;
+  stroke: var(--border-subtle);
+  stroke-width: 1;
+  transition: stroke var(--duration-expand) var(--ease-out);
+}
+
+.connector.is-current {
+  stroke: var(--primary);
+}
+
+.connector.is-failed {
+  stroke: var(--status-failed);
+}
+
+.arrow-default {
+  fill: var(--border-subtle);
+}
+
+.arrow-primary {
+  fill: var(--primary);
+}
+
+.arrow-failed {
+  fill: var(--status-failed);
+}
+
+.flow-card {
+  position: relative;
+  z-index: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  transition:
+    color var(--duration-hover) var(--ease-out),
+    background-color var(--duration-hover) var(--ease-out),
+    border-color var(--duration-hover) var(--ease-out);
+}
+
+.flow-card:hover {
+  border-color: var(--border-strong);
+}
+
+.boss-card {
+  padding: var(--space-4);
+}
+
+.boss-card.is-current,
+.hub-card.is-current {
+  border-color: var(--primary);
+}
+
+.card-identity {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.identity-copy {
+  min-width: 0;
+  flex: 1;
+}
+
+.identity-line {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.muted {
+  color: var(--text-secondary);
+}
+
+.placeholder-copy {
+  color: var(--text-placeholder);
+}
+
+.boss-form {
+  margin-top: var(--space-4);
+}
+
+.task-input {
+  display: block;
+  width: 100%;
+  min-height: 96px;
+  resize: vertical;
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  line-height: 22px;
+  transition:
+    color var(--duration-hover) var(--ease-out),
+    background-color var(--duration-hover) var(--ease-out),
+    border-color var(--duration-hover) var(--ease-out);
+}
+
+.task-input::placeholder {
+  color: var(--text-placeholder);
+}
+
+.task-input:hover {
+  background: var(--bg-card);
+}
+
+.task-input:focus {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.task-input.has-error {
+  border-color: var(--status-failed);
+}
+
+.shortcuts {
+  margin-top: var(--space-3);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.shortcut {
+  min-height: 32px;
+  padding: var(--space-1) var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  transition:
+    color var(--duration-hover) var(--ease-out),
+    background-color var(--duration-hover) var(--ease-out),
+    border-color var(--duration-hover) var(--ease-out);
+}
+
+.shortcut:hover {
+  background: var(--bg-subtle);
+  color: var(--text-primary);
+}
+
+.form-footer {
+  margin-top: var(--space-3);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-3);
+  flex-wrap: wrap;
+}
+
+.form-message {
+  flex: 1;
+  min-width: 0;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.form-message.is-error {
+  color: var(--status-failed);
+}
+
+.flow-gap {
+  position: relative;
+  min-height: 48px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding-top: var(--space-1);
+}
+
+.flow-label {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-0) var(--space-2);
+  background: var(--bg-page);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+}
+
+.hub-card {
+  width: 100%;
+  min-height: 64px;
+  padding: var(--space-4);
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  text-align: left;
+}
+
+.hub-card:hover {
+  background: var(--bg-subtle);
+}
+
+.hub-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.hub-title-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.hub-meta {
+  margin-top: var(--space-1);
+  color: var(--text-secondary);
+}
+
+.hub-state {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: var(--space-2);
+  color: var(--text-secondary);
+  text-align: right;
+}
+
+.employees {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(160px, 1fr));
+  gap: var(--space-4);
+  min-width: 0;
+}
+
+.employee-card {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: var(--space-0);
+  overflow: hidden;
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+  text-align: left;
+  transition:
+    color var(--duration-hover) var(--ease-out),
+    background-color var(--duration-hover) var(--ease-out),
+    border-color var(--duration-hover) var(--ease-out);
+}
+
+.employee-card:hover {
+  background: var(--bg-subtle);
+}
+
+.employee-card.is-current,
+.employee-card.is-selected {
+  border-color: var(--primary);
+}
+
+.employee-card.is-current .employee-top {
+  background: var(--primary-soft);
+}
+
+.employee-card.is-failed {
+  border-color: var(--status-failed);
+}
+
+.employee-card.is-offline .employee-name,
+.employee-card.is-offline .employee-role {
+  color: var(--text-secondary);
+}
+
+.employee-top {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.avatar-wrap {
+  position: relative;
+  flex: none;
+  width: 32px;
+  height: 32px;
+}
+
+.avatar-status {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 12px;
+  height: 12px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--bg-card);
+  border-radius: var(--radius-round);
+  background: var(--bg-card);
+  font-size: 12px;
+  line-height: 12px;
+}
+
+.employee-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.employee-name,
+.employee-role,
+.employee-task {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.employee-role {
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.employee-body {
+  padding: var(--space-3);
+}
+
+.member-state-line {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  white-space: nowrap;
+}
+
+.employee-task {
+  margin-top: var(--space-2);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  color: var(--text-secondary);
+  line-height: 20px;
+}
+
+.employee-task.is-failed {
+  color: var(--status-failed);
+}
+
+.rail {
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.rail-card {
+  padding: var(--space-4);
+  background: var(--bg-card);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+}
+
+.rail-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  margin-bottom: var(--space-3);
+}
+
+.rail-count {
+  color: var(--text-secondary);
+}
+
+.event-feed {
+  list-style: none;
+  margin: var(--space-0);
+  padding: var(--space-0);
+}
+
+.event {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr);
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-0);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.event:last-child {
+  border-bottom: 0;
+}
+
+.event.is-new {
+  animation: event-in var(--duration-expand) var(--ease-out) 1;
+}
+
+.event-time {
+  color: var(--text-secondary);
+}
+
+.event-copy {
+  min-width: 0;
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.event.is-done .event-copy {
+  color: var(--status-online);
+}
+
+.event.is-failed .event-copy {
+  color: var(--status-failed);
+}
+
+.empty-state {
+  padding: var(--space-5) var(--space-0);
+  color: var(--text-secondary);
+}
+
+.empty-state strong {
+  display: block;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+.empty-state span {
+  display: block;
+  margin-top: var(--space-1);
+  color: var(--text-placeholder);
+}
+
+.detail-member {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.detail-fields {
+  margin: var(--space-3) var(--space-0) var(--space-0);
+  display: grid;
+  gap: var(--space-2);
+}
+
+.detail-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: var(--space-2);
+}
+
+.detail-row dt {
+  color: var(--text-secondary);
+}
+
+.detail-row dd {
+  min-width: 0;
+  margin: var(--space-0);
+  overflow-wrap: anywhere;
+}
+
+.notice {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--status-busy-soft);
+  color: var(--text-primary);
+}
+
+.notice.is-failed {
+  background: var(--status-failed-soft);
+  color: var(--status-failed);
+}
+
+.ticket-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ticket {
+  padding: var(--space-3);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  transition:
+    color var(--duration-hover) var(--ease-out),
+    background-color var(--duration-hover) var(--ease-out),
+    border-color var(--duration-hover) var(--ease-out);
+}
+
+.ticket:hover {
+  background: var(--bg-subtle);
+}
+
+.ticket.is-selected {
+  background: var(--primary-soft);
+  border-color: var(--primary);
+}
+
+.ticket.is-failed {
+  border-color: var(--status-failed);
+}
+
+.ticket-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.ticket-title {
+  min-width: 0;
+  flex: 1;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.ticket-status {
+  flex: none;
+  padding: var(--space-1) var(--space-2);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  white-space: nowrap;
+}
+
+.ticket-status.is-running {
+  background: var(--status-busy-soft);
+  color: var(--status-busy);
+}
+
+.ticket-status.is-done {
+  background: var(--status-online-soft);
+  color: var(--status-online);
+}
+
+.ticket-status.is-failed {
+  background: var(--status-failed-soft);
+  color: var(--status-failed);
+}
+
+.ticket-owner,
+.ticket-description,
+.ticket-failure {
+  margin-top: var(--space-2);
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.ticket-failure {
+  color: var(--status-failed);
+}
+
+.command-block {
+  margin-top: var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  background: var(--bg-subtle);
+  overflow: hidden;
+}
+
+.command-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--border-strong);
+  color: var(--text-secondary);
+}
+
+.command-text {
+  margin: var(--space-0);
+  padding: var(--space-2);
+  overflow: auto;
+  color: var(--text-primary);
+  font-family: ui-monospace, SFMono-Regular, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 20px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.ticket-actions {
+  margin-top: var(--space-2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.dialog {
+  width: 320px;
+  max-width: calc(100vw - var(--space-7));
+  padding: var(--space-5);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-overlay);
+  color: var(--text-primary);
+}
+
+.dialog::backdrop {
+  background: var(--bg-page);
+}
+
+.dialog[open] {
+  animation: dialog-in var(--duration-overlay) var(--ease-out) 1;
+}
+
+.dialog-copy {
+  margin-top: var(--space-2);
+  color: var(--text-secondary);
+}
+
+.dialog-actions {
+  margin-top: var(--space-5);
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--space-2);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: var(--space-0);
+  margin: var(--space-0);
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+@keyframes event-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 1199px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .employees {
+    grid-template-columns: repeat(2, minmax(160px, 1fr));
+  }
+
+  .rail {
+    width: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: var(--space-5);
+  }
+
+  .rail-card:first-child {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 767px) {
+  .topbar-inner {
+    padding: var(--space-3) var(--space-4);
+    flex-wrap: wrap;
+  }
+
+  .topbar-spacer {
+    display: none;
+  }
+
+  .topbar-actions {
+    width: 100%;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .page {
+    padding: var(--space-4);
+  }
+
+  .main-column {
+    min-width: 0;
+  }
+
+  .page-heading,
+  .hub-card {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .hub-state {
+    justify-content: flex-start;
+    text-align: left;
+  }
+
+  .employees,
+  .rail {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .rail-card:first-child {
+    grid-column: auto;
+  }
+
+  .event {
+    grid-template-columns: 48px minmax(0, 1fr);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0ms !important;
+    transition-duration: 0ms !important;
+  }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="brand-logo" id="brandLogo" aria-hidden="true"></span>
+      <h1 class="t1">AI 团队驾驶舱</h1>
+    </div>
+    <div class="topbar-spacer"></div>
+    <div class="topbar-actions">
+      <div class="online-pill t4" id="onlinePill">
+        <span class="status-symbol status-online" aria-hidden="true">●</span>
+        <span id="onlineText">在线 5 人</span>
+      </div>
+      <span class="sync-time t4" id="syncTime">同步于 21:00:00</span>
+      <button class="button t4" id="refreshButton" type="button">刷新</button>
+    </div>
+  </div>
+</header>
+
+<main class="page">
+  <div class="workspace">
+    <section class="main-column" aria-labelledby="flowHeading">
+      <div class="page-heading">
+        <div class="heading-copy">
+          <h2 class="t2" id="flowHeading">任务流转</h2>
+          <p class="task-summary t4" id="taskSummary">还没有任务，先在上方发给小棒。</p>
+        </div>
+      </div>
+
+      <div class="flow-shell" id="flowShell">
+        <svg class="flow-lines" id="flowLines" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <marker id="arrowDefault" class="arrow-default" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto">
+              <path d="M 0 0 L 8 4 L 0 8 Z"></path>
+            </marker>
+            <marker id="arrowPrimary" class="arrow-primary" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto">
+              <path d="M 0 0 L 8 4 L 0 8 Z"></path>
+            </marker>
+            <marker id="arrowFailed" class="arrow-failed" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" orient="auto">
+              <path d="M 0 0 L 8 4 L 0 8 Z"></path>
+            </marker>
+          </defs>
+          <g id="edgeGroup"></g>
+        </svg>
+
+        <section class="flow-card boss-card" id="bossCard" aria-labelledby="bossTitle">
+          <div class="card-identity">
+            <span class="logo-box" id="bossLogo" aria-hidden="true"></span>
+            <div class="identity-copy">
+              <div class="identity-line">
+                <h2 class="t2">小棒</h2>
+                <span class="muted t4">老板 AI</span>
+              </div>
+              <h3 class="t2" id="bossTitle">给小棒派任务</h3>
+            </div>
+          </div>
+          <form class="boss-form" id="taskForm" novalidate>
+            <label class="sr-only" for="taskInput">任务内容</label>
+            <textarea class="task-input t3" id="taskInput" rows="3" placeholder="说清楚要做什么、谁配合、什么时候要。"></textarea>
+            <div class="shortcuts" aria-label="快捷短语">
+              <button class="shortcut t4" type="button" data-shortcut="查进度">查进度</button>
+              <button class="shortcut t4" type="button" data-shortcut="分一下活">分一下活</button>
+              <button class="shortcut t4" type="button" data-shortcut="催未完成">催未完成</button>
+              <button class="shortcut t4" type="button" data-shortcut="汇总结果">汇总结果</button>
+            </div>
+            <div class="form-footer">
+              <p class="form-message t4" id="formMessage" role="status" aria-live="polite"></p>
+              <button class="button button-text t4" id="clearButton" type="button">清空</button>
+              <button class="button button-primary t3" id="publishButton" type="submit" disabled>发布任务</button>
+            </div>
+          </form>
+        </section>
+
+        <div class="flow-gap" aria-hidden="true">
+          <span class="flow-label t4">小棒派活</span>
+        </div>
+
+        <button class="flow-card hub-card" id="hubCard" type="button" aria-label="查看小棒详情">
+          <span class="logo-box" id="hubLogo" aria-hidden="true"></span>
+          <span class="hub-main">
+            <span class="hub-title-row">
+              <span class="t2">小棒</span>
+              <span class="muted t4">拆任务、分活、盯进度</span>
+            </span>
+            <span class="hub-meta t4" id="hubMeta">等待发布任务</span>
+          </span>
+          <span class="hub-state t4" id="hubState">
+            <span class="status-symbol status-online" aria-hidden="true">●</span>
+            <span>在线</span>
+          </span>
+        </button>
+
+        <div class="flow-gap" aria-hidden="true">
+          <span class="flow-label t4">成员接活</span>
+        </div>
+
+        <div class="employees" id="employees" aria-label="团队成员"></div>
+      </div>
+    </section>
+
+    <aside class="rail" aria-label="团队状态与派活">
+      <section class="rail-card" aria-labelledby="eventsTitle">
+        <div class="rail-card-head">
+          <h2 class="t2" id="eventsTitle">实时事件</h2>
+          <span class="rail-count t4" id="eventCount">0 条</span>
+        </div>
+        <div id="eventLive" aria-live="polite">
+          <ol class="event-feed" id="eventFeed"></ol>
+        </div>
+      </section>
+
+      <section class="rail-card" aria-labelledby="detailTitle">
+        <h2 class="t2" id="detailTitle">成员详情</h2>
+        <div id="memberDetail"></div>
+      </section>
+
+      <section class="rail-card" aria-labelledby="ticketsTitle">
+        <div class="rail-card-head">
+          <h2 class="t2" id="ticketsTitle">派活单</h2>
+          <span class="rail-count t4" id="ticketCount">0 张</span>
+        </div>
+        <div class="ticket-list" id="ticketList"></div>
+      </section>
+    </aside>
+  </div>
+</main>
+
+<dialog class="dialog" id="confirmDialog" aria-labelledby="confirmTitle">
+  <h2 class="t2" id="confirmTitle">确认操作</h2>
+  <p class="dialog-copy t4" id="confirmCopy"></p>
+  <div class="dialog-actions">
+    <button class="button t4" id="confirmCancel" type="button">取消</button>
+    <button class="button button-primary t3" id="confirmAccept" type="button">确认</button>
+  </div>
+</dialog>
+
+<script src="../assets/logos.js"></script>
+<script src="../data/office.js"></script>
+<script>
+(() => {
+  "use strict";
+
+  const OFFICE = window.OFFICE || { agents: [], log: [] };
+  const LOGOS = window.LOGOS || {};
+  const agents = Array.isArray(OFFICE.agents) ? OFFICE.agents : [];
+  const hub = agents.find((agent) => agent.id === "bang") || agents[0] || {
+    id: "bang",
+    name: "小棒",
+    role: "老板 AI",
+    logo: "wb",
+    status: "online",
+    cmd: "当前会话即入口，无需命令"
+  };
+  const team = agents.filter((agent) => agent.id !== hub.id);
+  const agentById = new Map(agents.map((agent) => [agent.id, agent]));
+  const initialStatus = new Map(agents.map((agent) => [agent.id, agent.status || "online"]));
+
+  const KIND_META = {
+    execution: {
+      title: "执行任务",
+      word: "执行",
+      ownerId: "ku",
+      fallbackOwnerId: "shen",
+      duration: 1600
+    },
+    review: {
+      title: "复核任务",
+      word: "复核",
+      ownerId: "ke",
+      fallbackOwnerId: "shen",
+      duration: 1200
+    },
+    search: {
+      title: "检索任务",
+      word: "检索",
+      ownerId: "dou",
+      fallbackOwnerId: "shen",
+      duration: 2000
+    }
+  };
+
+  const STATUS = {
+    waiting: { label: "等待中", symbol: "○", className: "status-waiting", ticketClass: "is-waiting" },
+    running: { label: "进行中", symbol: "▶", className: "status-busy", ticketClass: "is-running" },
+    done: { label: "已完成", symbol: "✓", className: "status-online", ticketClass: "is-done" },
+    failed: { label: "失败", symbol: "×", className: "status-failed", ticketClass: "is-failed" }
+  };
+
+  const elements = {
+    brandLogo: document.getElementById("brandLogo"),
+    bossLogo: document.getElementById("bossLogo"),
+    hubLogo: document.getElementById("hubLogo"),
+    onlineText: document.getElementById("onlineText"),
+    syncTime: document.getElementById("syncTime"),
+    refreshButton: document.getElementById("refreshButton"),
+    taskSummary: document.getElementById("taskSummary"),
+    flowShell: document.getElementById("flowShell"),
+    edgeGroup: document.getElementById("edgeGroup"),
+    bossCard: document.getElementById("bossCard"),
+    hubCard: document.getElementById("hubCard"),
+    hubMeta: document.getElementById("hubMeta"),
+    hubState: document.getElementById("hubState"),
+    employees: document.getElementById("employees"),
+    taskForm: document.getElementById("taskForm"),
+    taskInput: document.getElementById("taskInput"),
+    formMessage: document.getElementById("formMessage"),
+    clearButton: document.getElementById("clearButton"),
+    publishButton: document.getElementById("publishButton"),
+    eventFeed: document.getElementById("eventFeed"),
+    eventCount: document.getElementById("eventCount"),
+    memberDetail: document.getElementById("memberDetail"),
+    ticketList: document.getElementById("ticketList"),
+    ticketCount: document.getElementById("ticketCount"),
+    confirmDialog: document.getElementById("confirmDialog"),
+    confirmTitle: document.getElementById("confirmTitle"),
+    confirmCopy: document.getElementById("confirmCopy"),
+    confirmCancel: document.getElementById("confirmCancel"),
+    confirmAccept: document.getElementById("confirmAccept")
+  };
+
+  let tasks = [];
+  let selectedAgentId = null;
+  let jobSequence = 0;
+  let publishLocked = false;
+  let publishing = false;
+  let syncTimer = null;
+  let edgeFrame = null;
+  let eventSequence = 0;
+
+  function escapeHtml(value) {
+    return String(value == null ? "" : value).replace(/[&<>"']/g, (character) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      "\"": "&quot;",
+      "'": "&#39;"
+    })[character]);
+  }
+
+  function logoMarkup(agent) {
+    return LOGOS[agent.logo] || LOGOS.wb || "";
+  }
+
+  function normalizeText(value) {
+    return String(value || "").replace(/\s+/g, " ").trim();
+  }
+
+  function truncate(value, length) {
+    const text = normalizeText(value);
+    return text.length > length ? text.slice(0, length) + "…" : text;
+  }
+
+  function nowTime() {
+    const date = new Date();
+    return [date.getHours(), date.getMinutes(), date.getSeconds()]
+      .map((part) => String(part).padStart(2, "0"))
+      .join(":");
+  }
+
+  function initialSyncTime() {
+    const raw = String(OFFICE.generatedAt || "");
+    const match = raw.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+    if (!match) return nowTime();
+    return [match[1].padStart(2, "0"), match[2], match[3] || "00"].join(":");
+  }
+
+  function wait(duration) {
+    return new Promise((resolve) => window.setTimeout(resolve, duration));
+  }
+
+  function taskForAgent(agentId) {
+    const ownTasks = tasks.filter((task) => task.ownerId === agentId);
+    return ownTasks.find((task) => task.status === "running")
+      || ownTasks.find((task) => task.status === "waiting")
+      || ownTasks.find((task) => task.status === "failed")
+      || ownTasks.find((task) => task.status === "done")
+      || null;
+  }
+
+  function memberStatus(agentId) {
+    if (initialStatus.get(agentId) === "offline") return "offline";
+    if (tasks.some((task) => task.ownerId === agentId && task.status === "running")) return "busy";
+    return "online";
+  }
+
+  function memberStatusMarkup(agentId) {
+    const status = memberStatus(agentId);
+    const meta = status === "online"
+      ? { symbol: "●", label: "在线", className: "status-online" }
+      : status === "busy"
+        ? { symbol: "◐", label: "忙碌", className: "status-busy" }
+        : { symbol: "○", label: "离线", className: "status-offline" };
+    return `<span class="status-symbol ${meta.className}" aria-hidden="true">${meta.symbol}</span><span>${meta.label}</span>`;
+  }
+
+  function taskStatusMarkup(status) {
+    const meta = STATUS[status];
+    return `<span class="status-symbol ${meta.className}" aria-hidden="true">${meta.symbol}</span><span>${meta.label}</span>`;
+  }
+
+  function renderStaticLogos() {
+    elements.brandLogo.innerHTML = LOGOS.wb || "";
+    elements.bossLogo.innerHTML = LOGOS.wb || "";
+    elements.hubLogo.innerHTML = logoMarkup(hub);
+  }
+
+  function renderEmployees() {
+    elements.employees.innerHTML = team.map((agent) => {
+      const current = taskForAgent(agent.id);
+      const status = memberStatus(agent.id);
+      const isCurrent = Boolean(
+        current
+        && selectedAgentId === agent.id
+        && (current.status === "running" || current.status === "waiting")
+      );
+      const isSelected = selectedAgentId === agent.id;
+      const isFailed = Boolean(current && current.status === "failed");
+      const taskCopy = current
+        ? current.status === "failed"
+          ? "这项没做成，点开看原因。"
+          : current.title
+        : "暂无任务";
+      const statusClass = status === "online" ? "status-online" : status === "busy" ? "status-busy" : "status-offline";
+      const statusSymbol = status === "online" ? "●" : status === "busy" ? "◐" : "○";
+      return `
+        <button
+          class="employee-card${isCurrent ? " is-current" : ""}${isSelected ? " is-selected" : ""}${isFailed ? " is-failed" : ""}${status === "offline" ? " is-offline" : ""}"
+          type="button"
+          data-agent-id="${escapeHtml(agent.id)}"
+          aria-pressed="${isSelected ? "true" : "false"}"
+          aria-label="查看${escapeHtml(agent.name)}的成员详情"
+        >
+          <span class="employee-top">
+            <span class="avatar-wrap">
+              <span class="logo-box" aria-hidden="true">${logoMarkup(agent)}</span>
+              <span class="avatar-status ${statusClass}" aria-hidden="true">${statusSymbol}</span>
+            </span>
+            <span class="employee-main">
+              <span class="employee-name t2">${escapeHtml(agent.name)}</span>
+              <span class="employee-role t4">${escapeHtml(agent.role || "")}</span>
+            </span>
+          </span>
+          <span class="employee-body">
+            <span class="member-state-line t4">
+              <span class="status-symbol ${statusClass}" aria-hidden="true">${statusSymbol}</span>
+              <span>${status === "online" ? "在线" : status === "busy" ? "忙碌" : "离线"}</span>
+            </span>
+            <span class="employee-task t4${current && current.status === "failed" ? " is-failed" : ""}">${escapeHtml(taskCopy)}</span>
+          </span>
+        </button>
+      `;
+    }).join("");
+  }
+
+  function selectedTask() {
+    return tasks.find((task) => task.id === selectedAgentId) || null;
+  }
+
+  function renderFlowState() {
+    const hasWaiting = tasks.some((task) => task.status === "waiting");
+    const currentTask = tasks.find((task) => task.ownerId === selectedAgentId && task.status === "running")
+      || tasks.find((task) => task.status === "running")
+      || null;
+    const hasRunning = Boolean(currentTask);
+    const hubHasWork = hasWaiting || hasRunning;
+
+    elements.bossCard.classList.toggle("is-current", hasWaiting && !hasRunning);
+    elements.hubCard.classList.toggle("is-current", hubHasWork);
+
+    const hubAgentStatus = `● 在线`;
+    elements.hubState.innerHTML = `<span class="status-symbol status-online" aria-hidden="true">●</span><span>在线</span>`;
+    if (!tasks.length) {
+      elements.hubMeta.textContent = "等待发布任务";
+    } else if (tasks.some((task) => task.status === "failed")) {
+      elements.hubMeta.textContent = `失败 · ${tasks.filter((task) => task.status === "failed").length} 项`;
+    } else if (hasRunning) {
+      elements.hubMeta.textContent = `进行中 · ${tasks.filter((task) => task.status === "running").length} 项`;
+    } else if (tasks.every((task) => task.status === "done")) {
+      elements.hubMeta.textContent = `已完成 · ${tasks.length} 项`;
+    } else {
+      elements.hubMeta.textContent = `等待中 · ${tasks.filter((task) => task.status === "waiting").length} 项`;
+    }
+
+    if (!tasks.length) {
+      elements.taskSummary.textContent = "还没有任务，先在上方发给小棒。";
+    } else {
+      const states = [
+        ["running", "进行中"],
+        ["waiting", "等待中"],
+        ["done", "已完成"],
+        ["failed", "失败"]
+      ]
+        .map(([status, label]) => {
+          const count = tasks.filter((task) => task.status === status).length;
+          return count ? `${label} ${count}` : "";
+        })
+        .filter(Boolean)
+        .join(" · ");
+      const activeTask = currentTask || tasks.find((task) => task.status === "failed") || tasks[0];
+      elements.taskSummary.textContent = `${activeTask.jobName} · ${states}`;
+    }
+
+    renderEmployees();
+    renderEdges();
+  }
+
+  function connectorMarkup(id, path, state) {
+    const className = state === "failed" ? "is-failed" : state === "current" ? "is-current" : "";
+    const marker = state === "failed" ? "arrowFailed" : state === "current" ? "arrowPrimary" : "arrowDefault";
+    return `<path class="connector ${className}" data-edge-id="${escapeHtml(id)}" d="${path}" marker-end="url(#${marker})"></path>`;
+  }
+
+  function roundedBranch(x1, y1, x2, y2) {
+    const radius = 4;
+    const direction = x2 >= x1 ? 1 : -1;
+    const middleY = y1 + (y2 - y1) / 2;
+    if (Math.abs(x2 - x1) < radius * 2) {
+      return `M ${x1} ${y1} V ${y2}`;
+    }
+    return [
+      `M ${x1} ${y1}`,
+      `V ${middleY - radius}`,
+      `Q ${x1} ${middleY} ${x1 + direction * radius} ${middleY}`,
+      `H ${x2 - direction * radius}`,
+      `Q ${x2} ${middleY} ${x2} ${middleY + radius}`,
+      `V ${y2}`
+    ].join(" ");
+  }
+
+  function renderEdges() {
+    if (edgeFrame) window.cancelAnimationFrame(edgeFrame);
+    edgeFrame = window.requestAnimationFrame(() => {
+      edgeFrame = null;
+      const shellRect = elements.flowShell.getBoundingClientRect();
+      const bossRect = elements.bossCard.getBoundingClientRect();
+      const hubRect = elements.hubCard.getBoundingClientRect();
+      if (!shellRect.width || !shellRect.height) return;
+
+      const bossX = bossRect.left - shellRect.left + bossRect.width / 2;
+      const bossY = bossRect.bottom - shellRect.top;
+      const hubX = hubRect.left - shellRect.left + hubRect.width / 2;
+      const hubTop = hubRect.top - shellRect.top;
+      const hubBottom = hubRect.bottom - shellRect.top;
+      const hasWaiting = tasks.some((task) => task.status === "waiting");
+      const hasRunning = tasks.some((task) => task.status === "running");
+      const selectedRunning = tasks.find((task) => task.ownerId === selectedAgentId && task.status === "running");
+      const bossState = hasWaiting || hasRunning ? "current" : "default";
+
+      let markup = connectorMarkup("boss-hub", `M ${bossX} ${bossY} V ${hubTop}`, bossState);
+      const employeeCards = Array.from(elements.employees.querySelectorAll(".employee-card"));
+      employeeCards.forEach((card) => {
+        const agentId = card.dataset.agentId;
+        const cardRect = card.getBoundingClientRect();
+        const x = cardRect.left - shellRect.left + cardRect.width / 2;
+        const y = cardRect.top - shellRect.top;
+        const task = tasks.find((item) => item.ownerId === agentId);
+        const failed = Boolean(task && task.status === "failed");
+        const current = Boolean(task && task.status === "running" && selectedRunning && selectedRunning.ownerId === agentId);
+        const state = failed ? "failed" : current ? "current" : "default";
+        markup += connectorMarkup(agentId, roundedBranch(hubX, hubBottom, x, y), state);
+      });
+      elements.edgeGroup.innerHTML = markup;
+    });
+  }
+
+  function renderHubState() {
+    renderFlowState();
+  }
+
+  function currentTaskTitle() {
+    const task = selectedTask() || tasks.find((item) => item.status === "running");
+    return task ? task.title : null;
+  }
+
+  function renderMemberDetail() {
+    const agent = agentById.get(selectedAgentId);
+    if (!agent) {
+      elements.memberDetail.innerHTML = `
+        <div class="empty-state t4">
+          <strong class="t3">选择成员查看详情</strong>
+          <span>点流程图里的成员，看详情。</span>
+        </div>
+      `;
+      return;
+    }
+    const agentTasks = tasks.filter((task) => task.ownerId === agent.id);
+    const activeTask = agentTasks.find((task) => task.status === "running")
+      || agentTasks.find((task) => task.status === "waiting")
+      || agentTasks.find((task) => task.status === "failed")
+      || null;
+    const doneCount = agentTasks.filter((task) => task.status === "done").length;
+    const lastFailure = [...agentTasks].reverse().find((task) => task.failureHistory.length || task.status === "failed");
+    const lastFailureReason = lastFailure
+      ? lastFailure.failureReason
+        || lastFailure.failureHistory[lastFailure.failureHistory.length - 1]?.reason
+        || "未返回失败原因"
+      : "";
+    const status = agent.id === hub.id ? "online" : memberStatus(agent.id);
+    const statusMeta = status === "online"
+      ? { symbol: "●", label: "在线", className: "status-online" }
+      : status === "busy"
+        ? { symbol: "◐", label: "忙碌", className: "status-busy" }
+        : { symbol: "○", label: "离线", className: "status-offline" };
+    const currentCopy = activeTask
+      ? agent.id === hub.id
+        ? "拆任务、分活、盯进度"
+        : `当前任务：${activeTask.title}`
+      : "当前没接活。";
+    const offlineNotice = status === "offline"
+      ? `<div class="notice t4">${escapeHtml(agent.name)}现在离线，新活可能接不到。</div>`
+      : "";
+    const failureNotice = lastFailure
+      ? `<div class="notice is-failed t4">最近一次失败：${escapeHtml(lastFailureReason)}</div>`
+      : "";
+    elements.memberDetail.innerHTML = `
+      <div class="detail-member">
+        <span class="logo-box" aria-hidden="true">${logoMarkup(agent)}</span>
+        <div>
+          <div class="t2">${escapeHtml(agent.name)}</div>
+          <div class="muted t4">${escapeHtml(agent.role || "")}</div>
+        </div>
+      </div>
+      <dl class="detail-fields t4">
+        <div class="detail-row"><dt>状态</dt><dd class="member-state-line"><span class="status-symbol ${statusMeta.className}" aria-hidden="true">${statusMeta.symbol}</span><span>${statusMeta.label}</span></dd></div>
+        <div class="detail-row"><dt>当前任务</dt><dd>${escapeHtml(currentCopy)}</dd></div>
+        <div class="detail-row"><dt>已交结果</dt><dd>已交结果：${doneCount}</dd></div>
+      </dl>
+      ${offlineNotice}
+      ${failureNotice}
+    `;
+  }
+
+  function commandForTask(task, agent) {
+    const raw = String(agent.cmd || "当前会话即入口，无需命令");
+    const commandTask = `${task.title}：${task.originalText}`;
+    return raw
+      .replace('"任务"', JSON.stringify(commandTask))
+      .replace("「任务」", commandTask);
+  }
+
+  function renderTickets() {
+    elements.ticketCount.textContent = `${tasks.length} 张`;
+    if (!tasks.length) {
+      elements.ticketList.innerHTML = `<div class="empty-state t4">小棒还没派活。</div>`;
+      return;
+    }
+    elements.ticketList.innerHTML = tasks.map((task) => {
+      const agent = agentById.get(task.ownerId) || team[0] || hub;
+      const meta = STATUS[task.status];
+      const isSelected = selectedAgentId === task.ownerId;
+      const failure = task.status === "failed"
+        ? `<p class="ticket-failure t4">失败原因：${escapeHtml(task.failureReason || "未返回失败原因")}</p>`
+        : "";
+      const actions = task.status === "failed"
+        ? `
+          <div class="ticket-actions">
+            <button class="button t4" type="button" data-action="retry" data-task-id="${escapeHtml(task.id)}">重试</button>
+            <button class="button t4" type="button" data-action="reassign" data-task-id="${escapeHtml(task.id)}">改派</button>
+          </div>
+        `
+        : "";
+      return `
+        <article class="ticket${isSelected ? " is-selected" : ""}${task.status === "failed" ? " is-failed" : ""}" data-task-id="${escapeHtml(task.id)}">
+          <div class="ticket-head">
+            <h3 class="ticket-title t3">${escapeHtml(task.title)} · ${escapeHtml(agent.name)} · ${escapeHtml(meta.label)}</h3>
+            <span class="ticket-status t4 ${meta.ticketClass}">${taskStatusMarkup(task.status)}</span>
+          </div>
+          <p class="ticket-owner t4">负责人：${escapeHtml(agent.name)}</p>
+          <p class="ticket-description t4">${escapeHtml(task.title)}：${escapeHtml(truncate(task.originalText, 72))}</p>
+          ${failure}
+          <div class="command-block">
+            <div class="command-head t4">
+              <span>命令</span>
+              <button class="button button-text t4" type="button" data-action="copy" data-task-id="${escapeHtml(task.id)}">复制</button>
+            </div>
+            <pre class="command-text">${escapeHtml(commandForTask(task, agent))}</pre>
+          </div>
+          ${actions}
+        </article>
+      `;
+    }).join("");
+  }
+
+  function renderPublishControls() {
+    const hasText = Boolean(elements.taskInput.value.trim());
+    elements.publishButton.disabled = publishLocked || !hasText;
+    elements.publishButton.textContent = publishing ? "发布中" : "发布任务";
+    elements.taskInput.classList.remove("has-error");
+    if (!hasText) {
+      elements.formMessage.textContent = "";
+      elements.formMessage.classList.remove("is-error");
+    }
+  }
+
+  function renderAll() {
+    renderHubState();
+    renderMemberDetail();
+    renderTickets();
+    renderPublishControls();
+    renderOnlinePill();
+  }
+
+  function renderOnlinePill() {
+    const connected = agents.filter((agent) => initialStatus.get(agent.id) !== "offline").length;
+    elements.onlineText.textContent = connected === 0 ? "当前无人在线" : `在线 ${connected} 人`;
+  }
+
+  function setFormMessage(message, isError) {
+    elements.formMessage.textContent = message;
+    elements.formMessage.classList.toggle("is-error", Boolean(isError));
+    elements.taskInput.classList.toggle("has-error", Boolean(isError));
+  }
+
+  function appendEvent(who, message, tone) {
+    const item = document.createElement("li");
+    item.className = `event is-new${tone === "done" ? " is-done" : tone === "failed" ? " is-failed" : ""}`;
+    item.innerHTML = `
+      <span class="event-time t4">${nowTime()}</span>
+      <span class="event-copy t4"><strong>${escapeHtml(who)}</strong>${escapeHtml(message)}</span>
+    `;
+    elements.eventFeed.prepend(item);
+    eventSequence += 1;
+    elements.eventCount.textContent = `${eventSequence} 条`;
+    window.setTimeout(() => item.classList.remove("is-new"), 160);
+  }
+
+  function memberById(id) {
+    return agentById.get(id) || team[0] || hub;
+  }
+
+  function pickOwner(kind) {
+    const meta = KIND_META[kind];
+    const preferred = agentById.get(meta.ownerId);
+    if (preferred && memberStatus(preferred.id) !== "offline") return preferred;
+    const fallback = agentById.get(meta.fallbackOwnerId);
+    if (fallback && memberStatus(fallback.id) !== "offline") return fallback;
+    return team.find((agent) => memberStatus(agent.id) !== "offline") || preferred || team[0] || hub;
+  }
+
+  function detectKinds(text) {
+    const kinds = [];
+    const searchText = text.replace(/检查|审查|复查|复核/g, "");
+    if (/写|改|实现/.test(text)) kinds.push("execution");
+    if (/审|检查|校对/.test(text)) kinds.push("review");
+    if (/查|最新|联网/.test(searchText)) kinds.push("search");
+    if (!kinds.includes("execution")) kinds.unshift("execution");
+    if (!kinds.includes("review")) kinds.push("review");
+    return Array.from(new Set(kinds)).slice(0, 4);
+  }
+
+  function createJob(text) {
+    jobSequence += 1;
+    const jobName = truncate(text, 32);
+    const kinds = detectKinds(text);
+    const shouldFail = /模拟失败|故意失败|报错/.test(text);
+    const failKindIndex = kinds.indexOf("execution");
+    return kinds.map((kind, index) => {
+      const owner = pickOwner(kind);
+      const offline = memberStatus(owner.id) === "offline";
+      return {
+        id: `job-${jobSequence}-task-${index + 1}`,
+        jobId: jobSequence,
+        jobName,
+        originalText: text,
+        kind,
+        title: KIND_META[kind].title,
+        ownerId: owner.id,
+        status: "waiting",
+        assignmentNote: offline ? "待成员上线" : "",
+        failureReason: null,
+        failureHistory: [],
+        shouldFail: shouldFail && index === failKindIndex,
+        result: null
+      };
+    });
+  }
+
+  async function runTask(task, index) {
+    await wait(160 + index * 160);
+    if (memberStatus(task.ownerId) === "offline") {
+      task.assignmentNote = "待成员上线";
+      renderAll();
+      return;
+    }
+    task.status = "running";
+    selectedAgentId = task.ownerId;
+    renderAll();
+    const owner = memberById(task.ownerId);
+    appendEvent(owner.name, "接活");
+
+    await wait(KIND_META[task.kind].duration);
+    if (task.shouldFail) {
+      task.status = "failed";
+      task.failureReason = "执行成员返回了失败结果";
+      task.failureHistory.push({ reason: task.failureReason, time: nowTime() });
+      task.shouldFail = false;
+      selectedAgentId = task.ownerId;
+      renderAll();
+      appendEvent(owner.name, `${task.title}失败：${task.failureReason}`, "failed");
+    } else {
+      task.status = "done";
+      task.result = `${task.title}已处理，结果已交回小棒。`;
+      renderAll();
+      appendEvent(owner.name, "交结果", "done");
+      appendEvent(owner.name, `「${task.title}」已完成`, "done");
+    }
+    const runningTask = tasks.find((item) => item.status === "running");
+    if (runningTask) selectedAgentId = runningTask.ownerId;
+    renderAll();
+  }
+
+  async function runBatch(batch) {
+    const runnable = batch.filter((task) => memberStatus(task.ownerId) !== "offline");
+    await Promise.all(runnable.map((task, index) => runTask(task, index)));
+    publishLocked = false;
+    publishing = false;
+    renderPublishControls();
+    renderTickets();
+    renderOnlinePill();
+  }
+
+  function publishTask() {
+    if (publishLocked) return;
+    const text = normalizeText(elements.taskInput.value);
+    if (!text) {
+      setFormMessage("先写任务，再发布。", true);
+      elements.taskInput.focus();
+      return;
+    }
+
+    publishLocked = true;
+    publishing = true;
+    setFormMessage("", false);
+    renderPublishControls();
+    const batch = createJob(text);
+    tasks = batch;
+    selectedAgentId = hub.id;
+    renderAll();
+
+    appendEvent(hub.name, `收到任务：${truncate(text, 40)}`);
+    batch.forEach((task) => {
+      const owner = memberById(task.ownerId);
+      appendEvent(hub.name, `把「${task.title}」分给${owner.name}`);
+    });
+
+    window.setTimeout(() => {
+      publishing = false;
+      setFormMessage("任务已发给小棒。", false);
+      renderPublishControls();
+      runBatch(batch);
+    }, 200);
+  }
+
+  async function confirmAction(title, copy, acceptLabel) {
+    elements.confirmTitle.textContent = title;
+    elements.confirmCopy.textContent = copy;
+    elements.confirmAccept.textContent = acceptLabel;
+    if (!elements.confirmDialog.open) elements.confirmDialog.showModal();
+    return new Promise((resolve) => {
+      function close(result) {
+        elements.confirmAccept.removeEventListener("click", accept);
+        elements.confirmCancel.removeEventListener("click", cancel);
+        elements.confirmDialog.removeEventListener("cancel", cancel);
+        if (elements.confirmDialog.open) elements.confirmDialog.close();
+        resolve(result);
+      }
+      function accept() {
+        close(true);
+      }
+      function cancel(event) {
+        if (event) event.preventDefault();
+        close(false);
+      }
+      elements.confirmAccept.addEventListener("click", accept, { once: true });
+      elements.confirmCancel.addEventListener("click", cancel, { once: true });
+      elements.confirmDialog.addEventListener("cancel", cancel, { once: true });
+    });
+  }
+
+  async function retryTask(task) {
+    const owner = memberById(task.ownerId);
+    if (memberStatus(owner.id) === "offline") {
+      task.status = "waiting";
+      task.assignmentNote = "待成员上线";
+      renderAll();
+      return;
+    }
+    publishLocked = true;
+    task.status = "waiting";
+    task.failureReason = null;
+    selectedAgentId = task.ownerId;
+    renderAll();
+    renderPublishControls();
+    await runTask(task, 0);
+    publishLocked = false;
+    renderPublishControls();
+  }
+
+  async function reassignTask(task) {
+    const current = memberById(task.ownerId);
+    const replacement = team.find((agent) => agent.id !== current.id && memberStatus(agent.id) === "online");
+    if (!replacement) {
+      setFormMessage("当前无人在线", true);
+      return;
+    }
+    const approved = await confirmAction(
+      "确认改派",
+      `把这个子任务从${current.name}改派给${replacement.name}。`,
+      "确认改派"
+    );
+    if (!approved) return;
+    task.failureHistory.push({ reason: task.failureReason || "未返回失败原因", time: nowTime() });
+    task.ownerId = replacement.id;
+    task.status = "waiting";
+    task.failureReason = null;
+    selectedAgentId = replacement.id;
+    appendEvent(hub.name, `把「${task.title}」分给${replacement.name}`);
+    renderAll();
+    publishLocked = true;
+    renderPublishControls();
+    await runTask(task, 0);
+    publishLocked = false;
+    renderPublishControls();
+  }
+
+  async function copyText(text, button) {
+    let copied = false;
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        await navigator.clipboard.writeText(text);
+        copied = true;
+      }
+    } catch (error) {
+      copied = false;
+    }
+    if (!copied) {
+      const helper = document.createElement("textarea");
+      helper.value = text;
+      helper.setAttribute("readonly", "");
+      helper.style.position = "fixed";
+      helper.style.opacity = "0";
+      document.body.appendChild(helper);
+      helper.select();
+      try {
+        copied = document.execCommand("copy");
+      } catch (error) {
+        copied = false;
+      }
+      helper.remove();
+    }
+    const oldLabel = button.textContent;
+    button.textContent = copied ? "已复制" : "复制失败";
+    window.setTimeout(() => {
+      button.textContent = oldLabel;
+    }, 1200);
+  }
+
+  function populateInitialEvents() {
+    const log = Array.isArray(OFFICE.log) ? OFFICE.log.slice(0, 12) : [];
+    [...log].reverse().forEach((entry) => {
+      appendEvent(entry.who || "系统", entry.msg || "", entry.bad ? "failed" : entry.ok ? "done" : "normal");
+    });
+    if (!log.length) {
+      elements.eventFeed.innerHTML = `<li class="empty-state t4">还没有新动静。</li>`;
+      elements.eventCount.textContent = "0 条";
+    }
+  }
+
+  elements.taskForm.addEventListener("submit", (event) => {
+    event.preventDefault();
+    publishTask();
+  });
+
+  elements.taskInput.addEventListener("input", () => {
+    setFormMessage("", false);
+    renderPublishControls();
+  });
+
+  elements.taskInput.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+      event.preventDefault();
+      publishTask();
+    }
+  });
+
+  elements.clearButton.addEventListener("click", () => {
+    elements.taskInput.value = "";
+    setFormMessage("", false);
+    renderPublishControls();
+    elements.taskInput.focus();
+  });
+
+  document.querySelectorAll("[data-shortcut]").forEach((button) => {
+    button.addEventListener("click", () => {
+      elements.taskInput.value = button.dataset.shortcut || "";
+      setFormMessage("", false);
+      renderPublishControls();
+      elements.taskInput.focus();
+    });
+  });
+
+  elements.hubCard.addEventListener("click", () => {
+    selectedAgentId = hub.id;
+    renderAll();
+  });
+
+  elements.employees.addEventListener("click", (event) => {
+    const card = event.target.closest("[data-agent-id]");
+    if (!card) return;
+    selectedAgentId = card.dataset.agentId;
+    renderAll();
+  });
+
+  elements.ticketList.addEventListener("click", async (event) => {
+    const actionButton = event.target.closest("[data-action]");
+    if (actionButton) {
+      const task = tasks.find((item) => item.id === actionButton.dataset.taskId);
+      if (!task) return;
+      if (actionButton.dataset.action === "copy") {
+        await copyText(commandForTask(task, memberById(task.ownerId)), actionButton);
+      } else if (actionButton.dataset.action === "retry") {
+        await retryTask(task);
+      } else if (actionButton.dataset.action === "reassign") {
+        await reassignTask(task);
+      }
+      return;
+    }
+    const ticket = event.target.closest(".ticket");
+    if (ticket) {
+      const task = tasks.find((item) => item.id === ticket.dataset.taskId);
+      if (!task) return;
+      selectedAgentId = task.ownerId;
+      renderAll();
+    }
+  });
+
+  elements.refreshButton.addEventListener("click", () => {
+    if (syncTimer) return;
+    elements.refreshButton.disabled = true;
+    elements.refreshButton.textContent = "刷新中";
+    syncTimer = window.setTimeout(() => {
+      elements.syncTime.textContent = `同步于 ${nowTime()}`;
+      elements.refreshButton.disabled = false;
+      elements.refreshButton.textContent = "刷新";
+      syncTimer = null;
+    }, 200);
+  });
+
+  const resizeObserver = new ResizeObserver(() => renderEdges());
+  resizeObserver.observe(elements.flowShell);
+  resizeObserver.observe(elements.employees);
+  Array.from(elements.employees.children).forEach((card) => resizeObserver.observe(card));
+  window.addEventListener("resize", renderEdges);
+
+  renderStaticLogos();
+  elements.syncTime.textContent = `同步于 ${initialSyncTime()}`;
+  populateInitialEvents();
+  renderAll();
+})();
+</script>
+</body>
+</html>
