@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI 团队驾驶舱 · 磨坊办公室</title>
+<style>
+:root{
+  --bg:#12141a; --panel:#1a1d26; --panel2:#21252f; --line:#2e3340;
+  --ink:#e8eaf0; --ink2:#9aa2b1; --ink3:#6b7383;
+  --ok:#4ade80; --warn:#fbbf24; --bad:#f87171; --accent:#38bdf8;
+  --floor1:#a9784f; --floor2:#96683f;
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{
+  background:var(--bg); color:var(--ink);
+  font-family:"Segoe UI","Microsoft YaHei",system-ui,sans-serif;
+  font-size:13px; line-height:1.6; overflow:hidden;
+}
+.app{display:grid;grid-template-rows:auto 1fr auto;height:100vh}
+
+header{
+  display:flex;align-items:center;gap:14px;padding:10px 18px;
+  background:linear-gradient(180deg,#1d212b,#171a22);
+  border-bottom:1px solid var(--line);
+}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:22px;height:22px;image-rendering:pixelated}
+.brand h1{font-size:15px;font-weight:500;margin:0;letter-spacing:.5px}
+.brand .sub{font-size:11px;color:var(--ink3)}
+.spacer{flex:1}
+.chips{display:flex;gap:8px;align-items:center}
+.chip{
+  display:flex;align-items:center;gap:6px;padding:3px 10px;border-radius:999px;
+  background:var(--panel2);border:1px solid var(--line);font-size:11px;color:var(--ink2);
+}
+.chip b{color:var(--ink);font-weight:500}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--ok);flex:none}
+.dot.warn{background:var(--warn)} .dot.bad{background:var(--bad)} .dot.off{background:#4b5263}
+.clock{font-family:ui-monospace,Consolas,monospace;font-size:12px;color:var(--ink2);min-width:74px;text-align:right}
+button.refresh{
+  background:var(--panel2);color:var(--ink);border:1px solid var(--line);
+  border-radius:6px;padding:5px 12px;font-size:12px;cursor:pointer;font-family:inherit;
+}
+button.refresh:hover{background:#2a2f3c;border-color:#3d4454}
+
+main{display:grid;grid-template-columns:1fr 372px;min-height:0}
+.floor-wrap{position:relative;display:flex;align-items:center;justify-content:center;padding:14px;min-height:0}
+svg#floor{width:100%;height:100%;max-height:100%}
+.legend{
+  position:absolute;left:22px;bottom:12px;display:flex;gap:14px;
+  font-size:11px;color:var(--ink3);
+}
+.legend span{display:flex;align-items:center;gap:5px}
+
+aside{
+  background:var(--panel);border-left:1px solid var(--line);
+  overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;
+}
+.card{background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:12px}
+.card h2{font-size:12px;font-weight:500;margin:0 0 8px;color:var(--ink2);letter-spacing:.5px}
+.who{display:flex;align-items:flex-start;gap:10px}
+.who .avatar{width:44px;height:60px;flex:none;image-rendering:pixelated}
+.who .nm{font-size:16px;font-weight:500}
+.who .eng{font-size:11px;color:var(--ink3);font-family:ui-monospace,Consolas,monospace}
+.state{margin-left:auto;font-size:11px;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.state.on{background:rgba(74,222,128,.13);color:var(--ok);border:1px solid rgba(74,222,128,.3)}
+.state.off{background:rgba(248,113,113,.13);color:var(--bad);border:1px solid rgba(248,113,113,.3)}
+
+.kv{display:grid;grid-template-columns:66px 1fr;gap:6px 10px;margin-top:10px;font-size:12px}
+.kv dt{color:var(--ink3)}
+.kv dd{margin:0;color:var(--ink);word-break:break-all}
+.tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tag{font-size:11px;padding:2px 8px;border-radius:5px;background:#2a3040;color:#a9b4c7;border:1px solid #353c4d}
+.cmd{
+  margin-top:10px;background:#12141a;border:1px solid var(--line);border-radius:6px;
+  padding:8px 10px;font-family:ui-monospace,Consolas,monospace;font-size:11px;
+  color:#8fb8d8;white-space:pre-wrap;word-break:break-all;line-height:1.5;
+}
+.routes{display:flex;flex-direction:column;gap:7px}
+.route{display:flex;align-items:center;gap:8px;font-size:12px}
+.route .cond{color:var(--ink2);flex:1}
+.route .to{color:var(--accent);font-weight:500;white-space:nowrap}
+.bar{height:5px;border-radius:3px;background:#2a3040;overflow:hidden;margin-top:5px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,#38bdf8,#4ade80)}
+.costrow{display:flex;justify-content:space-between;font-size:12px;margin-top:7px}
+.costrow span:last-child{color:var(--ink2);font-family:ui-monospace,Consolas,monospace}
+
+footer{
+  border-top:1px solid var(--line);background:var(--panel);
+  padding:8px 18px;height:132px;overflow-y:auto;
+}
+footer h3{font-size:11px;color:var(--ink3);margin:0 0 6px;font-weight:500;letter-spacing:.5px}
+.logline{font-family:ui-monospace,Consolas,monospace;font-size:11.5px;color:var(--ink2);display:flex;gap:10px;line-height:1.75}
+.logline .t{color:#5b6474;flex:none}
+.logline .who2{color:var(--accent);flex:none;min-width:34px}
+.logline .ok2{color:var(--ok)} .logline .bad2{color:var(--bad)}
+
+.station{cursor:pointer}
+.station .hit,.station .desk,.station .plate,.station .ring{transition:opacity .15s}
+.station:hover .plate{opacity:1}
+.station .plate{opacity:.55}
+.station.sel .plate{opacity:1}
+.station.sel .ring{opacity:1}
+.station .ring{opacity:0}
+.pulse{animation:pulse 2.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+@media (prefers-reduced-motion:reduce){.pulse{animation:none}}
+@media (max-width:1100px){
+  main{grid-template-columns:1fr;grid-template-rows:1fr auto}
+  aside{border-left:none;border-top:1px solid var(--line);max-height:38vh}
+  footer{display:none}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 8 8"><rect width="8" height="8" fill="#38bdf8"/><rect x="1" y="1" width="2" height="2" fill="#12141a"/><rect x="5" y="1" width="2" height="2" fill="#12141a"/><rect x="2" y="5" width="4" height="1" fill="#12141a"/></svg>
+      <div>
+        <h1>磨坊办公室 · AI 团队驾驶舱</h1>
+        <div class="sub" id="genAt">数据加载中…</div>
+      </div>
+    </div>
+    <div class="spacer"></div>
+    <div class="chips" id="chips"></div>
+    <div class="clock" id="clock">--:--:--</div>
+    <button class="refresh" onclick="location.reload()">刷新</button>
+  </header>
+
+  <main>
+    <div class="floor-wrap">
+      <svg id="floor" viewBox="0 0 760 470" preserveAspectRatio="xMidYMid meet">
+        <defs>
+          <pattern id="tile" width="40" height="40" patternUnits="userSpaceOnUse">
+            <rect width="40" height="40" fill="#a9784f"/>
+            <rect width="20" height="20" fill="#b9855a"/>
+            <rect x="20" y="20" width="20" height="20" fill="#b9855a"/>
+            <path d="M0 0H40M0 20H40M0 0V40M20 0V40" stroke="#8f6440" stroke-width="1" opacity=".5"/>
+          </pattern>
+          <pattern id="wallpat" width="16" height="16" patternUnits="userSpaceOnUse">
+            <rect width="16" height="16" fill="#2a2f3c"/>
+            <path d="M0 8H16M0 16H16" stroke="#222732" stroke-width="1"/>
+            <path d="M8 0V8M0 8V16" stroke="#222732" stroke-width="1"/>
+          </pattern>
+          <linearGradient id="glow" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#7dd3fc" stop-opacity=".55"/>
+            <stop offset="1" stop-color="#7dd3fc" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <g id="room"></g>
+        <g id="stations"></g>
+        <g id="fx"></g>
+      </svg>
+      <div class="legend">
+        <span><i class="dot"></i>在线可派活</span>
+        <span><i class="dot warn"></i>需人工确认</span>
+        <span><i class="dot off"></i>未连接</span>
+      </div>
+    </div>
+
+    <aside>
+      <div class="card" id="detail"></div>
+      <div class="card">
+        <h2>派活路由</h2>
+        <div class="routes" id="routes"></div>
+      </div>
+      <div class="card">
+        <h2>今日成本</h2>
+        <div id="cost"></div>
+      </div>
+    </aside>
+  </main>
+
+  <footer>
+    <h3>事件日志</h3>
+    <div id="log"></div>
+  </footer>
+</div>
+
+<script src="data/office.js"></script>
+<script>
+const SPRITE = [
+  "...hhhh...",
+  "..hhhhhh..",
+  "..hhhhhh..",
+  "..hffffh..",
+  "..hfeefh..",
+  "..hffffh..",
+  "...ffff...",
+  "..cccccc..",
+  ".cccccccc.",
+  ".fccccccf.",
+  ".fccccccf.",
+  "..cccccc..",
+  "..pppppp..",
+  "..pp..pp.."
+];
+
+function spriteSVG(colors, px){
+  const map = {h:colors.hair, f:colors.skin, e:"#1b1f27", c:colors.shirt, p:colors.pants};
+  let out = "";
+  for (let r = 0; r < SPRITE.length; r++){
+    const row = SPRITE[r];
+    for (let c = 0; c < row.length; c++){
+      const ch = row[c];
+      if (ch === ".") continue;
+      out += `<rect x="${c*px}" y="${r*px}" width="${px}" height="${px}" fill="${map[ch]}"/>`;
+    }
+  }
+  return out;
+}
+
+const OFFICE = window.OFFICE || {agents:[], routing:[], log:[], cost:{}};
+const byId = {};
+OFFICE.agents.forEach(a => byId[a.id] = a);
+
+function el(id){ return document.getElementById(id); }
+function esc(s){ return String(s).replace(/[&<>]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+/* ---------- 房间 ---------- */
+function buildRoom(){
+  const g = el("room");
+  g.innerHTML = `
+    <rect x="0" y="0" width="760" height="470" fill="#12141a"/>
+    <rect x="0" y="0" width="760" height="96" fill="url(#wallpat)"/>
+    <rect x="0" y="92" width="760" height="8" fill="#1b2029"/>
+    <rect x="0" y="100" width="760" height="370" fill="url(#tile)"/>
+    ${[70,230,390,550].map(x=>`
+      <rect x="${x}" y="22" width="96" height="52" fill="#0e1520" stroke="#39414f" stroke-width="2"/>
+      <rect x="${x+4}" y="26" width="88" height="44" fill="#16233a"/>
+      <path d="M${x+4} 52 L${x+30} 34 L${x+52} 52 Z" fill="#1e3350" opacity=".9"/>
+      <circle cx="${x+72}" cy="38" r="6" fill="#2a4a6e"/>
+    `).join("")}
+    <rect x="672" y="24" width="70" height="46" rx="2" fill="#20262f" stroke="#39414f" stroke-width="2"/>
+    <path d="M678 32h58M678 40h58M678 48h44M678 56h58M678 64h30" stroke="#47536b" stroke-width="2"/>
+
+    <rect x="16" y="300" width="728" height="152" rx="8" fill="#8a5f3c" opacity=".45"/>
+    <rect x="16" y="300" width="728" height="152" rx="8" fill="none" stroke="#6d4a2d" stroke-width="3"/>
+
+    <g transform="translate(40,262)">
+      <rect x="-2" y="34" width="26" height="6" rx="1" fill="#5d3f28"/>
+      <rect x="0" y="14" width="22" height="22" rx="2" fill="#7a4a33"/>
+      <rect x="0" y="14" width="22" height="4" fill="#96604a"/>
+      <rect x="4" y="-6" width="5" height="22" fill="#2f6b3a"/>
+      <rect x="13" y="-12" width="5" height="28" fill="#3d8b4a"/>
+      <rect x="-4" y="-2" width="5" height="18" fill="#276030"/>
+      <rect x="9" y="-18" width="5" height="10" fill="#4ea35c"/>
+    </g>
+
+    <g transform="translate(700,262)">
+      <rect x="0" y="34" width="26" height="6" rx="1" fill="#5d3f28"/>
+      <rect x="2" y="14" width="22" height="22" rx="2" fill="#7a4a33"/>
+      <rect x="2" y="14" width="22" height="4" fill="#96604a"/>
+      <rect x="7" y="-10" width="5" height="26" fill="#3d8b4a"/>
+      <rect x="15" y="-4" width="5" height="20" fill="#2f6b3a"/>
+      <rect x="2" y="2" width="5" height="14" fill="#4ea35c"/>
+    </g>
+
+    <g transform="translate(668,170)">
+      <rect x="0" y="0" width="26" height="52" rx="3" fill="#333b4a" stroke="#454f60" stroke-width="2"/>
+      <rect x="4" y="6" width="18" height="20" rx="2" fill="#1d3f52"/>
+      <rect x="8" y="30" width="4" height="6" fill="#5a6478"/>
+      <rect x="16" y="30" width="4" height="6" fill="#5a6478"/>
+      <rect x="4" y="40" width="18" height="3" fill="#4a5466"/>
+    </g>
+
+    <g transform="translate(52,170)">
+      <rect x="0" y="0" width="30" height="46" rx="2" fill="#3a4353" stroke="#4a5466" stroke-width="2"/>
+      <path d="M0 16h30M0 32h30" stroke="#2b3240" stroke-width="2"/>
+      <rect x="10" y="5" width="10" height="3" rx="1" fill="#5a6478"/>
+      <rect x="10" y="21" width="10" height="3" rx="1" fill="#5a6478"/>
+    </g>
+  `;
+}
+
+/* ---------- 工位 ---------- */
+function stationG(a, x, y){
+  const s = document.createElementNS("http://www.w3.org/2000/svg","g");
+  s.setAttribute("class","station");
+  s.dataset.id = a.id;
+  const px = 4;
+  const spriteW = 10*px, spriteH = SPRITE.length*px;
+  const sx = x - spriteW/2, sy = y - spriteH - 6;
+  const online = a.status === "online";
+  const dotColor = online ? "#4ade80" : (a.status === "warn" ? "#fbbf24" : "#6b7383");
+  s.innerHTML = `
+    <rect class="ring" x="${x-56}" y="${sy-30}" width="112" height="${spriteH+96}" rx="10"
+          fill="none" stroke="#38bdf8" stroke-width="2" stroke-dasharray="6 4"/>
+    <rect x="${x+14}" y="${sy+14}" width="26" height="20" rx="2" fill="#0d1b26" stroke="#3d4b5e" stroke-width="2"/>
+    <rect x="${x+17}" y="${sy+17}" width="20" height="12" fill="${online?"#1c4a63":"#1a1f28"}"/>
+    <rect x="${x+24}" y="${sy+34}" width="6" height="6" fill="#3d4b5e"/>
+    <path d="M${x+20} ${sy+52} h14" stroke="#3d4b5e" stroke-width="2"/>
+    <g transform="translate(${sx},${sy})">${spriteSVG(a.colors, px)}</g>
+    <rect x="${x-44}" y="${y-30}" width="88" height="12" rx="2" fill="#7a5233"/>
+    <rect x="${x-44}" y="${y-30}" width="88" height="4" fill="#96663f"/>
+    <rect x="${x-40}" y="${y-18}" width="80" height="24" fill="#5d3f28"/>
+    <rect x="${x-40}" y="${y-18}" width="80" height="3" fill="#7a5233"/>
+    <rect x="${x-30}" y="${y-6}" width="60" height="14" rx="2" fill="#4b3322"/>
+    <ellipse cx="${x-30}" cy="${sy-24}" rx="26" ry="6" fill="url(#glow)" opacity="${online?.5:0}"/>
+    <circle class="${online?"pulse":""}" cx="${x}" cy="${sy-16}" r="4.5" fill="${dotColor}"/>
+    <rect class="plate" x="${x-46}" y="${y+16}" width="92" height="20" rx="3" fill="#171a22" stroke="${a.id==="bang"?"#38bdf8":"#39414f"}" stroke-width="1"/>
+    <text x="${x}" y="${y+30}" text-anchor="middle" font-size="11.5" font-family="ui-monospace,Consolas,monospace"
+          fill="${a.id==="bang"?"#7dd3fc":"#c8d2e0"}">${esc(a.name)}</text>
+    <text x="${x}" y="${y+53}" text-anchor="middle" font-size="10" font-family="ui-monospace,Consolas,monospace"
+          fill="#8b94a6">${esc(a.role)}</text>
+  `;
+  s.addEventListener("click", () => select(a.id));
+  s.addEventListener("mouseenter", () => showTip(a, x, y));
+  s.addEventListener("mouseleave", hideTip);
+  return s;
+}
+
+function buildStations(){
+  const g = el("stations");
+  g.innerHTML = "";
+  OFFICE.agents.forEach(a => {
+    g.appendChild(stationG(a, a.seat.x, a.seat.y));
+  });
+}
+
+/* ---------- 悬浮提示 ---------- */
+let tip;
+function showTip(a, x, y){
+  hideTip();
+  tip = document.createElement("div");
+  tip.style.cssText = `position:absolute;left:${x/760*100}%;top:${(y-110)/470*100}%;transform:translate(-50%,-100%);
+    background:#0f1218;border:1px solid #39414f;border-radius:6px;padding:6px 9px;font-size:11px;
+    color:#c8d2e0;pointer-events:none;white-space:nowrap;z-index:5`;
+  tip.textContent = `${a.name} · ${a.engine} · ${a.status === "online" ? "在线" : "离线"}`;
+  document.querySelector(".floor-wrap").appendChild(tip);
+}
+function hideTip(){ if (tip) { tip.remove(); tip = null; } }
+
+/* ---------- 详情面板 ---------- */
+let selected = null;
+function select(id){
+  selected = id;
+  document.querySelectorAll(".station").forEach(s => s.classList.toggle("sel", s.dataset.id === id));
+  const a = byId[id];
+  if (!a) return;
+  const online = a.status === "online";
+  el("detail").innerHTML = `
+    <div class="who">
+      <svg class="avatar" viewBox="0 0 40 56">${spriteSVG(a.colors, 4)}</svg>
+      <div>
+        <div class="nm">${esc(a.name)}</div>
+        <div class="eng">${esc(a.engine)}</div>
+        <div class="eng" style="color:#556072">${esc(a.role)}</div>
+      </div>
+      <div class="state ${online?"on":"off"}">${online?"在线":"离线"}</div>
+    </div>
+    <dl class="kv">
+      <dt>版本</dt><dd>${esc(a.version)}</dd>
+      <dt>最近活动</dt><dd>${esc(a.last)}</dd>
+      <dt>典型耗时</dt><dd>${esc(a.latency)}</dd>
+      <dt>边界</dt><dd style="color:#c9a35a">${esc(a.limit)}</dd>
+    </dl>
+    <div class="tags">${(a.caps||[]).map(c=>`<span class="tag">${esc(c)}</span>`).join("")}</div>
+    ${a.cmd ? `<div class="cmd">${esc(a.cmd)}</div>` : ""}
+  `;
+}
+
+/* ---------- 路由 / 成本 / 日志 ---------- */
+function buildRoutes(){
+  el("routes").innerHTML = OFFICE.routing.map(r =>
+    `<div class="route"><span class="cond">${esc(r.when)}</span><span class="to">${esc(r.to)}</span></div>`
+  ).join("");
+}
+
+function buildCost(){
+  const c = OFFICE.cost || {};
+  const rows = [
+    ["普通问答", c.chat || "2s / 80 tok"],
+    ["联网一次", c.web || "25s / 8000 tok"],
+    ["代码任务", c.code || "12s / 300~8000 tok"],
+    ["月免费额度", c.free || "联网 20K 次"]
+  ];
+  el("cost").innerHTML = rows.map(([k,v]) =>
+    `<div class="costrow"><span>${esc(k)}</span><span>${esc(v)}</span></div>`
+  ).join("") + `<div class="bar"><i style="width:${c.usedPct||18}%"></i></div>
+    <div style="font-size:11px;color:#6b7383;margin-top:6px">示意用量，非真实计费</div>`;
+}
+
+function buildLog(){
+  el("log").innerHTML = (OFFICE.log||[]).slice(0,40).map(l =>
+    `<div class="logline"><span class="t">${esc(l.t)}</span><span class="who2">${esc(l.who)}</span>
+     <span class="${l.bad?"bad2":(l.ok?"ok2":"")}">${esc(l.msg)}</span></div>`
+  ).join("");
+}
+
+function buildChips(){
+  const on = OFFICE.agents.filter(a => a.status === "online").length;
+  const total = OFFICE.agents.length;
+  el("chips").innerHTML = `
+    <div class="chip"><i class="dot ${on===total?"":"warn"}"></i>在线 <b>${on}/${total}</b></div>
+    <div class="chip">引擎 <b>${new Set(OFFICE.agents.map(a=>a.engine)).size}</b> 种</div>
+    <div class="chip">连通 <b>${OFFICE.connectivity || "全部"}</b></div>
+  `;
+}
+
+/* ---------- 信封动画 ---------- */
+function flyEnvelope(fromId, toId, label){
+  const f = byId[fromId], t = byId[toId];
+  if (!f || !t) return;
+  const fx = el("fx");
+  const g = document.createElementNS("http://www.w3.org/2000/svg","g");
+  g.innerHTML = `
+    <rect x="-7" y="-5" width="14" height="10" rx="1" fill="#f4e7c8" stroke="#b08a4f" stroke-width="1"/>
+    <path d="M-7 -5 L0 0 L7 -5" fill="none" stroke="#b08a4f" stroke-width="1"/>
+  `;
+  fx.appendChild(g);
+  const x0 = f.seat.x, y0 = f.seat.y - 90;
+  const x1 = t.seat.x, y1 = t.seat.y - 90;
+  const cx = (x0 + x1)/2, cy = Math.min(y0,y1) - 70;
+  const dur = 900, t0 = performance.now();
+  (function step(now){
+    const p = Math.min(1, (now - t0)/dur);
+    const e = p<.5 ? 2*p*p : 1-Math.pow(-2*p+2,2)/2;
+    const x = (1-e)*(1-e)*x0 + 2*(1-e)*e*cx + e*e*x1;
+    const y = (1-e)*(1-e)*y0 + 2*(1-e)*e*cy + e*e*y1;
+    g.setAttribute("transform", `translate(${x},${y}) rotate(${Math.sin(p*Math.PI)*12})`);
+    if (p < 1) requestAnimationFrame(step);
+    else {
+      g.remove();
+      if (label) pushLog(label);
+    }
+  })(t0);
+}
+
+function pushLog(msg){
+  const d = new Date();
+  const t = String(d.getHours()).padStart(2,"0")+":"+String(d.getMinutes()).padStart(2,"0");
+  const box = el("log");
+  const div = document.createElement("div");
+  div.className = "logline";
+  div.innerHTML = `<span class="t">${t}</span><span class="who2">小棒</span><span class="ok2">${esc(msg)}</span>`;
+  box.prepend(div);
+}
+
+/* ---------- 时钟 ---------- */
+function tick(){
+  const d = new Date();
+  el("clock").textContent = [d.getHours(),d.getMinutes(),d.getSeconds()]
+    .map(n => String(n).padStart(2,"0")).join(":");
+}
+setInterval(tick, 1000); tick();
+
+/* ---------- 启动 ---------- */
+buildRoom();
+buildStations();
+buildRoutes();
+buildCost();
+buildLog();
+buildChips();
+el("genAt").textContent = "数据快照：" + (OFFICE.generatedAt || "未生成") + " · 点工位看详情";
+select("bang");
+
+let cycle = 0;
+setInterval(() => {
+  const list = OFFICE.agents.filter(a => a.id !== "bang" && a.status === "online");
+  if (!list.length) return;
+  const a = list[cycle++ % list.length];
+  flyEnvelope("bang", a.id);
+}, 5200);
+</script>
+</body>
+</html>

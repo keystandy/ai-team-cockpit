@@ -1,0 +1,13 @@
+# 本地/系统垃圾
+.edge-tmp/
+dom.html
+node_modules/
+*.log
+
+# 探活会重写 data/office.js，但它是仓库一部分，不忽略
+
+# 编辑器
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
