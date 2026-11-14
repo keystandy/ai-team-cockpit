@@ -174,12 +174,14 @@ for (const [id, r] of Object.entries(res)) {
   const a = byId[id];
   if (!a) continue;
   a.status = r.status;
+  a.ms = r.ms || null;
+  a.tokens = r.tokens || null;
   if (r.status === 'online') onlineCount++;
   const bits = [r.note];
   if (r.tokens) bits.push(r.tokens + ' tok');
   bits.push(fmt(r.ms));
   a.last = `${hhmm(now)} ${bits.join(' / ')}`;
-  if (r.version) a.version = r.version;
+  if (r.version) a.version = String(r.version).replace(/^codex-cli\s+/i, '').replace(/\s*\(Claude Code\)$/i, '');
   console.log(`  ${a.name.padEnd(3)} ${r.status === 'online' ? '在线' : '离线'}  ${bits.join('  ')}`);
   logAdd.push({
     t: hhmm(now), who: a.name,

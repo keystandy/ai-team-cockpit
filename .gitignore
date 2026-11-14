@@ -1,5 +1,6 @@
 # 本地/系统垃圾
 .edge-tmp/
+.tmp/
 dom.html
 node_modules/
 *.log
