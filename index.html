@@ -2131,7 +2131,14 @@ p {
     const taskById = new Map((payload.tasks || []).map((task) => [task.id, task]));
     liveRunId = run.id;
     tasks = (payload.tasks || []).map((task) => liveTaskToUi(task, run));
-    artifacts = (payload.artifacts || []).map((artifact) =>
+    const latestArtifacts = new Map();
+    (payload.artifacts || [])
+      .slice()
+      .sort((left, right) => left.id - right.id)
+      .forEach((artifact) => {
+        latestArtifacts.set(`${artifact.task_id || "run"}:${artifact.kind}`, artifact);
+      });
+    artifacts = Array.from(latestArtifacts.values()).map((artifact) =>
       liveArtifactToUi(artifact, taskById)
     );
     artifactGenerationActive = tasks.some((task) => task.status === "running");

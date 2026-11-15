@@ -8,7 +8,12 @@ from pathlib import Path
 
 from server.adapters import AgentResult
 from server.config import COCKPIT_ROOT, Settings
-from server.orchestrator import TeamOrchestrator, build_plan, review_passes
+from server.orchestrator import (
+    TeamOrchestrator,
+    build_plan,
+    extract_urls,
+    review_passes,
+)
 from server.store import TeamStore
 
 
@@ -96,6 +101,13 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertFalse(review_passes("RETURN\n证据不足"))
         self.assertFalse(review_passes("看起来可以"))
 
+    def test_extract_urls_deduplicates_and_strips_punctuation(self) -> None:
+        text = "来源 https://a.example/x。另见 https://a.example/x，以及 https://b.example/y)"
+        self.assertEqual(
+            extract_urls(text),
+            ["https://a.example/x", "https://b.example/y"],
+        )
+
     def test_real_state_machine_reaches_human_acceptance(self) -> None:
         data = self.orchestrator.create("总结当前团队架构", None)
         run_id = data["run"]["id"]
@@ -111,6 +123,7 @@ class ControlPlaneTests(unittest.TestCase):
                 self.assertTrue(
                     all(task["status"] == "accepted" for task in result["tasks"])
                 )
+                time.sleep(0.15)
                 return
             time.sleep(0.02)
         self.fail("任务未到达待验收状态")
@@ -128,6 +141,7 @@ class ControlPlaneTests(unittest.TestCase):
                 self.assertIn("review.returned", [
                     event["type"] for event in state["events"]
                 ])
+                time.sleep(0.15)
                 return
             time.sleep(0.02)
         self.fail("复核退回后没有完成上游重试")
@@ -160,6 +174,7 @@ class ControlPlaneTests(unittest.TestCase):
             state = orchestrator.state(run_id)
             if state["run"]["status"] == "pending_review":
                 self.assertEqual(adapters.calls, {"dou": 2, "shen": 2, "ke": 2})
+                time.sleep(0.15)
                 return
             time.sleep(0.02)
         self.fail("新闻复核退回后没有重跑完整检索链")

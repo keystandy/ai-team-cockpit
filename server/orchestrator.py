@@ -5,6 +5,9 @@ import json
 import re
 import secrets
 import threading
+import urllib.error
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -29,6 +32,9 @@ TEAM_CONTEXT_FILES = (
     "01-老板开局词.md",
     "02-员工清单.md",
     "03-团队规矩.md",
+)
+URL_PATTERN = re.compile(
+    r"https?://[^\s<>\"')\]，。；：！？、（）【】]+"
 )
 
 
@@ -109,6 +115,79 @@ def team_context(max_bytes: int = 9000) -> str:
         chunks.append(block)
         used += size
     return "".join(chunks) or "(团队文档不可用)"
+
+
+def extract_urls(text: str, limit: int = 8) -> list[str]:
+    result = []
+    for match in URL_PATTERN.findall(text):
+        url = match.rstrip(".,;:!?)，。；：）]")
+        if url not in result:
+            result.append(url)
+        if len(result) >= limit:
+            break
+    return result
+
+
+def _probe_url(url: str) -> str:
+    request = urllib.request.Request(
+        url,
+        headers={
+            "User-Agent": "Mozilla/5.0 AI-Team-Link-Audit/1.0",
+            "Accept": "text/html,application/xhtml+xml",
+        },
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=12) as response:
+            status = getattr(response, "status", 200)
+            final_url = response.geturl()
+            raw = response.read(180000)
+            content_type = response.headers.get("Content-Type", "")
+        title = ""
+        published = ""
+        if "html" in content_type.lower() or raw.lstrip().startswith(b"<"):
+            text = raw.decode("utf-8", errors="replace")
+            title_match = re.search(r"(?is)<title[^>]*>(.*?)</title>", text)
+            if title_match:
+                title = re.sub(r"\s+", " ", title_match.group(1)).strip()[:180]
+            date_patterns = (
+                r'(?is)<meta[^>]+(?:property|name)=["\'](?:article:published_time|datePublished|publish-date|date)["\'][^>]+content=["\']([^"\']+)',
+                r'(?is)<meta[^>]+content=["\']([^"\']+)["\'][^>]+(?:property|name)=["\'](?:article:published_time|datePublished|publish-date|date)["\']',
+                r'(?is)<time[^>]+datetime=["\']([^"\']+)',
+            )
+            for pattern in date_patterns:
+                match = re.search(pattern, text)
+                if match:
+                    published = match.group(1)[:100]
+                    break
+        parts = [f"HTTP {status}", f"final={final_url}"]
+        if title:
+            parts.append(f"title={title}")
+        if published:
+            parts.append(f"published={published}")
+        return " | ".join(parts)
+    except urllib.error.HTTPError as exc:
+        return f"HTTP {exc.code} | final={url} | error={exc.reason}"
+    except Exception as exc:
+        return f"ERROR | final={url} | error={type(exc).__name__}: {exc}"
+
+
+def audit_links(text: str, limit: int = 8) -> str:
+    urls = extract_urls(text, limit)
+    if not urls:
+        return ""
+    results: dict[str, str] = {}
+    with ThreadPoolExecutor(max_workers=min(4, len(urls))) as executor:
+        futures = {executor.submit(_probe_url, url): url for url in urls}
+        for future in as_completed(futures):
+            url = futures[future]
+            try:
+                results[url] = future.result()
+            except Exception as exc:
+                results[url] = f"ERROR | final={url} | error={type(exc).__name__}: {exc}"
+    lines = ["## 自动链接探测", "以下为机器访问结果，仍需判断页面内容是否支持新闻事实。"]
+    for url in urls:
+        lines.append(f"- {url} -> {results.get(url, 'ERROR')}")
+    return "\n".join(lines)
 
 
 def build_plan(goal: str) -> list[dict[str, Any]]:
@@ -363,19 +442,29 @@ class TeamOrchestrator:
     def _prior_outputs(self, run_id: str) -> str:
         chunks = []
         for task in self.store.list_tasks(run_id):
-            if task["result"].strip():
+            if task["role"] != "review" and task["result"].strip():
                 chunks.append(f"## {task['title']} / {task['agent_id']}\n{task['result']}")
         return "\n\n".join(chunks)[-30000:]
 
+    def _review_feedback(self, run_id: str) -> str:
+        feedback = []
+        for task in self.store.list_tasks(run_id):
+            if task["role"] == "review" and task["result"].strip():
+                feedback.append(task["result"][-6000:])
+        return "\n\n".join(feedback)
+
     def _prompt(self, task: dict[str, Any], goal: str, workspace: Path, prior: str) -> str:
         safe_prior = prior[-12000:]
+        review_feedback = self._review_feedback(task["run_id"])[-3500:]
         rules = goal_specific_rules(goal)
         if task["role"] == "research":
             context = workspace_context(workspace, 5000)
             return (
                 "你是团队检索员。只返回可直接引用的事实与来源，不编造。\n"
                 f"总目标：{goal}\n\n任务专用验收口径：\n{rules}\n\n"
-                f"上一次退回意见与已有材料（如有）：\n{safe_prior or '(无)'}\n\n"
+                f"已有事实材料（如有）：\n{safe_prior or '(无)'}\n\n"
+                f"上一轮复核反馈（只作改进清单，不是事实来源）：\n"
+                f"{review_feedback or '(无)'}\n\n"
                 f"工作区文本：\n{context}\n\n"
                 "请联网重新检索并打开可访问来源，优先一手来源。"
                 "逐条给出事件发生日、首次披露日、报道日和链接，不得用旧闻冒充今日新闻。"
@@ -401,6 +490,8 @@ class TeamOrchestrator:
                 f"当前 AI 团队事实与制度：\n{team}\n\n"
                 f"工作区文本摘要：\n{context}\n\n"
                 f"已有材料：\n{safe_prior or '(无)'}\n\n"
+                f"复核反馈（只作改进清单，不是事实来源，不得把其中的旧候选当成本轮材料）：\n"
+                f"{review_feedback or '(无)'}\n\n"
                 "只使用以上材料中可见的事实，不要虚构运行数据。"
             )
         if task["role"] == "implement":
@@ -409,6 +500,8 @@ class TeamOrchestrator:
                 "上传、修改环境变量或访问密钥。\n"
                 f"总目标：{goal}\n工作目录：{workspace}\n\n"
                 f"规划与已有材料：\n{safe_prior}\n\n"
+                f"复核反馈（只作修复要求，不是新事实来源）：\n"
+                f"{review_feedback or '(无)'}\n\n"
                 "完成最小必要修改；运行可用的测试；最终报告修改文件、测试结果、"
                 "未完成项和风险。不要声称完成，等待独立复核。"
             )
@@ -485,10 +578,11 @@ class TeamOrchestrator:
                     prior = self._prior_outputs(run_id)
                     prompt = self._prompt(task, goal, workspace, prior)
                     self.store.update_task(task["id"], prompt=prompt)
+                    execution_token = secrets.token_hex(2)
                     artifact_path = (
                         self.settings.artifacts_dir
                         / run_id
-                        / f"{task['id']}-attempt{attempt}.md"
+                        / f"{task['id']}-attempt{attempt}-{execution_token}.md"
                     )
                     artifact_path.parent.mkdir(parents=True, exist_ok=True)
                     result: AgentResult = self.adapters.run(
@@ -503,6 +597,10 @@ class TeamOrchestrator:
                         self.store.update_run(run_id, status="cancelled")
                         return
                     if result.status == "success":
+                        if task["role"] == "research":
+                            link_report = audit_links(result.output)
+                            if link_report:
+                                result.output = result.output.rstrip() + "\n\n" + link_report
                         output_path = self._save_artifact(
                             run_id,
                             task["id"],
@@ -520,7 +618,7 @@ class TeamOrchestrator:
                                 run_id,
                                 task["id"],
                                 "workspace_diff",
-                                f"{task['id']}-attempt{attempt}-diff.txt",
+                                f"{task['id']}-attempt{attempt}-{execution_token}-diff.txt",
                                 diff_text,
                             )
                             evidence = f"{output_path}; {diff_path}"
