@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import tempfile
 import time
 import unittest
@@ -11,8 +12,10 @@ from server.config import COCKPIT_ROOT, Settings
 from server.orchestrator import (
     TeamOrchestrator,
     build_plan,
+    build_task_spec,
     extract_urls,
     review_passes,
+    validate_news_payload,
 )
 from server.store import TeamStore
 
@@ -61,6 +64,26 @@ class ShortfallAdapters:
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
         if agent_id == "ke":
             output = "PASS\n老板已批准不足交付"
+        elif agent_id == "dou":
+            output = json.dumps(
+                {
+                    "items": [
+                        {
+                            "title": "排除项",
+                            "event_date": "2026-01-01",
+                            "first_disclosed_at": "2026-01-01",
+                            "published_at": "2026-01-01",
+                            "primary_url": "",
+                            "source_tier": "C",
+                            "classification": "comment",
+                            "evidence_quote": "测试引用",
+                        }
+                    ],
+                    "excluded": [],
+                    "summary": "严格筛选后不足5条",
+                },
+                ensure_ascii=False,
+            )
         else:
             output = "严格筛选后只有1条，目标5条，不足5条，缺口4条"
         artifact_path.write_text(output + "\n", encoding="utf-8")
@@ -106,6 +129,74 @@ class ControlPlaneTests(unittest.TestCase):
             [task["role"] for task in build_plan("修复代码并运行测试")],
             ["plan", "implement", "review"],
         )
+
+    def test_task_spec_distinguishes_news_modes(self) -> None:
+        self.assertEqual(
+            build_task_spec("查今天的AI新闻5条")["mode"], "today_published"
+        )
+        self.assertEqual(
+            build_task_spec("查今天发生的AI新闻5条")["mode"], "today_event"
+        )
+        self.assertEqual(
+            build_task_spec("查近24小时AI新闻5条")["window_days"], 1
+        )
+
+    def test_structured_evidence_validation_counts_only_news(self) -> None:
+        spec = {
+            "mode": "today_published",
+            "required_count": 1,
+            "window_days": 0,
+        }
+        today = time.strftime("%Y-%m-%d")
+        payload = {
+            "items": [
+                {
+                    "title": "合格新闻",
+                    "event_date": today,
+                    "first_disclosed_at": today,
+                    "published_at": today,
+                    "primary_url": "https://example.com/news",
+                    "source_tier": "A",
+                    "classification": "news",
+                    "evidence_quote": "官方公告原文",
+                },
+                {
+                    "title": "评论",
+                    "event_date": today,
+                    "first_disclosed_at": today,
+                    "published_at": today,
+                    "primary_url": "https://example.com/comment",
+                    "source_tier": "B",
+                    "classification": "comment",
+                    "evidence_quote": "评论内容",
+                },
+            ]
+        }
+        validation = validate_news_payload(payload, spec, "")
+        self.assertEqual(validation["eligible_count"], 1)
+
+    def test_last_24h_requires_timezone_timestamp(self) -> None:
+        today = time.strftime("%Y-%m-%d")
+        payload = {
+            "items": [
+                {
+                    "title": "日期但无时间",
+                    "event_date": today,
+                    "first_disclosed_at": today,
+                    "published_at": today,
+                    "primary_url": "https://example.com/news",
+                    "source_tier": "A",
+                    "classification": "news",
+                    "evidence_quote": "官方公告原文",
+                }
+            ]
+        }
+        validation = validate_news_payload(
+            payload,
+            {"mode": "last_24h", "required_count": 1, "window_days": 1},
+            "",
+        )
+        self.assertEqual(validation["eligible_count"], 0)
 
     def test_workspace_rejects_parent_path(self) -> None:
         with self.assertRaises(ValueError):
@@ -174,6 +265,26 @@ class ControlPlaneTests(unittest.TestCase):
                         "RETURN\n补检索一手来源"
                         if self.calls[agent_id] == 1
                         else "PASS\n来源已补齐"
+                    )
+                elif agent_id == "dou":
+                    output = json.dumps(
+                        {
+                            "items": [
+                                {
+                                    "title": "测试新闻",
+                                    "event_date": "2026-01-01",
+                                    "first_disclosed_at": "2026-01-01",
+                                    "published_at": "2026-01-01",
+                                    "primary_url": "",
+                                    "source_tier": "C",
+                                    "classification": "comment",
+                                    "evidence_quote": "测试引用",
+                                }
+                            ],
+                            "excluded": [],
+                            "summary": "没有合格条目",
+                        },
+                        ensure_ascii=False,
                     )
                 else:
                     output = f"{agent_id} output"

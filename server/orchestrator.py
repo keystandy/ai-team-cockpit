@@ -8,7 +8,7 @@ import threading
 import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -225,7 +225,7 @@ def build_plan(goal: str) -> list[dict[str, Any]]:
             {
                 "role": "analyze",
                 "agent_id": "shen",
-                "title": "架构分析与结论",
+                "title": "分析与结论",
                 "deps": plan_deps,
                 "acceptance": "直接交付满足目标的最终分析、证据、风险和改进建议",
             }
@@ -255,18 +255,79 @@ def build_plan(goal: str) -> list[dict[str, Any]]:
     return tasks
 
 
-def goal_specific_rules(goal: str) -> str:
-    if re.search(r"新闻|资讯|最新|今天|今日", goal):
-        count_match = re.search(r"(\d+)\s*条", goal)
-        count = count_match.group(1) if count_match else "用户指定数量"
-        today = datetime.now().astimezone().strftime("%Y-%m-%d")
+def build_task_spec(goal: str, mode_override: str | None = None) -> dict[str, Any]:
+    mode = (mode_override or "auto").strip().lower()
+    if mode == "auto":
+        if re.search(r"近\s*72\s*小时|近\s*3\s*天|三天", goal):
+            mode = "last_72h"
+        elif re.search(r"近\s*24\s*小时|过去一天|昨天", goal):
+            mode = "last_24h"
+        elif re.search(r"发生|快讯", goal):
+            mode = "today_event"
+        elif re.search(r"新闻|资讯|最新|今天|今日", goal):
+            mode = "today_published"
+        else:
+            mode = "general"
+    labels = {
+        "today_event": "今日发生",
+        "today_published": "今日刊发",
+        "last_24h": "近24小时",
+        "last_72h": "近72小时",
+        "last_custom": "自定义时间窗口",
+        "general": "通用任务",
+    }
+    if mode not in labels:
+        raise ValueError("未知任务模式")
+    windows = {
+        "today_event": 0,
+        "today_published": 0,
+        "last_24h": 1,
+        "last_72h": 3,
+        "last_custom": None,
+        "general": None,
+    }
+    return {
+        "mode": mode,
+        "mode_label": labels[mode],
+        "required_count": requested_count(goal),
+        "window_days": windows[mode],
+        "strict_event_date": mode == "today_event",
+    }
+
+
+def goal_specific_rules(goal: str, spec: dict[str, Any] | None = None) -> str:
+    spec = spec or build_task_spec(goal)
+    mode = spec.get("mode", "general")
+    if spec.get("accept_shortfall"):
         return (
-            f"这是新闻检索任务，当前日期为 {today}。"
-            f"必须交付 {count} 条符合用户时效要求的条目。"
+            "老板已批准本次接受数量不足。复核重点是是否诚实列出缺口、来源、"
+            "不可发布项和风险；不得要求继续补足数量。"
+        )
+    if mode in (
+        "today_event",
+        "today_published",
+        "last_24h",
+        "last_72h",
+        "last_custom",
+    ):
+        count = spec.get("required_count") or "用户指定数量"
+        today = datetime.now().astimezone().strftime("%Y-%m-%d")
+        mode_requirements = {
+            "today_event": f"事件发生日必须是 {today}。",
+            "today_published": f"报道或首次公开发布日必须是 {today}，事件本身可早于今天。",
+            "last_24h": f"报道或首次公开发布必须在截至 {today} 的近24小时内。",
+            "last_72h": f"报道或首次公开发布必须在截至 {today} 的近72小时内。",
+            "last_custom": (
+                f"报道或首次公开发布必须在截至 {today} 的近"
+                f"{spec.get('window_days', 3)}天内。"
+            ),
+        }[mode]
+        return (
+            f"这是{mode}模式资讯任务。{mode_requirements}"
+            f"必须交付 {count} 条符合该时效模式的条目。"
             "每条必须列明事件发生日、首次披露日、报道日、可访问的一手来源链接、"
-            "来源等级和新闻分类。评论、宣传稿、聚合短讯必须单列，不能凑入新闻条数。"
-            "数量不足时明确说不足，不得用旧闻、评论或无关条目填充。"
-            "全球首个、首例、最大、成本最低等最高级表述必须有独立证据。"
+            "来源等级和新闻分类。评论、宣传稿、聚合短讯必须单列，不能凑入条数。"
+            "数量不足时明确说不足，不得用旧闻或无关条目填充。"
         )
     if re.search(r"架构|优点|缺点|改进|方案|设计", goal):
         return (
@@ -282,6 +343,186 @@ def goal_specific_rules(goal: str) -> str:
 def requested_count(goal: str) -> int | None:
     match = re.search(r"(\d+)\s*条", goal)
     return int(match.group(1)) if match else None
+
+
+def extract_json_object(text: str) -> dict[str, Any] | None:
+    decoder = json.JSONDecoder()
+    candidates: list[dict[str, Any]] = []
+    index = 0
+    while index < len(text):
+        start = text.find("{", index)
+        if start < 0:
+            break
+        try:
+            value, end = decoder.raw_decode(text[start:])
+        except json.JSONDecodeError:
+            index = start + 1
+            continue
+        if isinstance(value, dict):
+            candidates.append(value)
+        index = start + max(end, 1)
+    if not candidates:
+        return None
+    return max(
+        candidates,
+        key=lambda item: len(json.dumps(item, ensure_ascii=False)),
+    )
+
+
+def date_from_text(value: Any) -> date | None:
+    match = re.search(r"(\d{4})[-/](\d{1,2})[-/](\d{1,2})", str(value or ""))
+    if not match:
+        return None
+    try:
+        return date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    except ValueError:
+        return None
+
+
+def datetime_from_text(value: Any) -> datetime | None:
+    text = str(value or "").strip()
+    if not text:
+        return None
+    try:
+        return datetime.fromisoformat(text.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def source_tier(value: Any) -> str:
+    text = str(value or "").strip().lower()
+    if text.startswith(("a", "1")) or "一级" in text or "一手" in text:
+        return "A"
+    if text.startswith(("b", "2")) or "二级" in text:
+        return "B"
+    if text.startswith(("c", "3")) or "三级" in text:
+        return "C"
+    return "unknown"
+
+
+def link_statuses(report: str) -> dict[str, str]:
+    statuses: dict[str, str] = {}
+    for line in report.splitlines():
+        if not line.startswith("- http"):
+            continue
+        match = re.match(r"- (\S+) -> (?:HTTP (\d+)|ERROR)", line)
+        if match:
+            statuses[match.group(1)] = match.group(2) or "ERROR"
+    return statuses
+
+
+def validate_news_payload(
+    payload: dict[str, Any] | None,
+    spec: dict[str, Any],
+    link_report: str,
+) -> dict[str, Any]:
+    if not payload:
+        return {
+            "structured": False,
+            "eligible_count": 0,
+            "items": [],
+            "error": "未返回结构化 JSON",
+        }
+    raw_items = payload.get("items")
+    if not isinstance(raw_items, list):
+        return {
+            "structured": False,
+            "eligible_count": 0,
+            "items": [],
+            "error": "JSON 缺少 items 数组",
+        }
+    today = datetime.now().astimezone().date()
+    mode = spec.get("mode", "general")
+    window_days = spec.get("window_days")
+    statuses = link_statuses(link_report)
+    seen_urls: set[str] = set()
+    seen_titles: set[str] = set()
+    checked = []
+    eligible_count = 0
+    for index, raw in enumerate(raw_items, 1):
+        if not isinstance(raw, dict):
+            continue
+        title = str(raw.get("title", "")).strip()
+        url = str(raw.get("primary_url") or raw.get("url") or "").strip()
+        classification = str(raw.get("classification", "")).strip().lower()
+        tier = source_tier(raw.get("source_tier"))
+        event_day = date_from_text(raw.get("event_date"))
+        first_day = date_from_text(raw.get("first_disclosed_at"))
+        published_day = date_from_text(
+            raw.get("published_at") or raw.get("report_date")
+        )
+        published_at = datetime_from_text(
+            raw.get("published_at") or raw.get("report_date")
+        )
+        reasons = []
+        if not title:
+            reasons.append("缺少标题")
+        if not url.startswith(("http://", "https://")):
+            reasons.append("缺少可访问 URL")
+        if classification not in ("news", "硬新闻", "新闻"):
+            reasons.append("不是新闻分类")
+        if tier not in ("A", "B"):
+            reasons.append("来源等级不足")
+        if statuses.get(url) in ("ERROR", "403", "404", "410", "500", "502", "503", "504"):
+            reasons.append(f"链接探测失败: HTTP {statuses.get(url)}")
+        canonical_url = re.sub(r"[?#].*$", "", url).rstrip("/")
+        normalized_title = re.sub(r"\W+", "", title).lower()
+        if canonical_url and canonical_url in seen_urls:
+            reasons.append("URL 重复")
+        if normalized_title and normalized_title in seen_titles:
+            reasons.append("标题重复")
+        if mode == "today_event":
+            if event_day != today:
+                reasons.append("事件发生日不是今天")
+            if tier != "A":
+                reasons.append("今日发生模式要求一手来源")
+        elif mode == "last_24h":
+            now = datetime.now().astimezone()
+            if not published_at or published_at.tzinfo is None:
+                reasons.append("近24小时模式要求带时区的 ISO 发布时间")
+            elif published_at < now - timedelta(hours=24):
+                reasons.append("不在最近24小时窗口")
+        elif mode in ("today_published", "last_72h", "last_custom"):
+            effective_day = published_day or first_day
+            if mode == "today_published":
+                if effective_day != today:
+                    reasons.append("报道或首次披露日不是今天")
+            else:
+                days = int(window_days or (1 if mode == "last_24h" else 3))
+                if not effective_day or effective_day < today - timedelta(days=days):
+                    reasons.append(f"不在最近 {days} 天窗口")
+        if not str(raw.get("event_date", "")).strip():
+            reasons.append("缺少事件发生日")
+        if not str(raw.get("first_disclosed_at", "")).strip():
+            reasons.append("缺少首次披露日")
+        if not str(raw.get("published_at") or raw.get("report_date") or "").strip():
+            reasons.append("缺少报道日")
+        eligible = not reasons
+        if canonical_url:
+            seen_urls.add(canonical_url)
+        if normalized_title:
+            seen_titles.add(normalized_title)
+        if eligible:
+            eligible_count += 1
+        checked.append(
+            {
+                "index": index,
+                "title": title,
+                "url": url,
+                "classification": classification,
+                "source_tier": tier,
+                "eligible": eligible,
+                "reasons": reasons,
+            }
+        )
+    return {
+        "structured": True,
+        "eligible_count": eligible_count,
+        "required_count": spec.get("required_count"),
+        "mode": mode,
+        "items": checked,
+        "excluded": payload.get("excluded", []),
+    }
 
 
 def reports_shortfall(text: str) -> bool:
@@ -322,6 +563,7 @@ class TeamOrchestrator:
         self,
         goal: str,
         workspace_name: str | None = None,
+        mode_override: str | None = None,
     ) -> dict[str, Any]:
         goal = goal.strip()
         if not goal:
@@ -330,13 +572,14 @@ class TeamOrchestrator:
             raise ValueError("任务目标过长")
         run_id = self.run_id()
         workspace = self.settings.create_workspace(run_id, workspace_name)
+        spec = build_task_spec(goal, mode_override)
         plan = build_plan(goal)
-        self.store.create_run(run_id, goal, workspace, plan)
+        self.store.create_run(run_id, goal, workspace, plan, spec)
         self.store.add_event(
             run_id,
             "run.created",
             "小棒",
-            {"goal": goal, "workspace": str(workspace), "plan": plan},
+            {"goal": goal, "workspace": str(workspace), "plan": plan, "spec": spec},
         )
         worker = threading.Thread(
             target=self._execute_run,
@@ -406,6 +649,9 @@ class TeamOrchestrator:
             return self.cancel(run_id)
         if decision == "accept_shortfall":
             self.store.set_decision(run_id, decision, {})
+            spec = dict(run.get("spec") or {})
+            spec["accept_shortfall"] = True
+            self.store.set_spec(run_id, spec)
             self.store.add_event(
                 run_id,
                 "run.decision",
@@ -420,6 +666,17 @@ class TeamOrchestrator:
                 raise ValueError("时间窗口必须在 1 到 30 天之间")
             payload = {"window_days": window_days}
             self.store.set_decision(run_id, decision, payload)
+            spec = dict(run.get("spec") or {})
+            spec.update(
+                {
+                    "mode": "last_custom",
+                    "mode_label": f"近{window_days}天",
+                    "window_days": window_days,
+                    "strict_event_date": False,
+                    "accept_shortfall": False,
+                }
+            )
+            self.store.set_spec(run_id, spec)
             for task in self.store.list_tasks(run_id):
                 self.store.update_task(
                     task["id"],
@@ -429,6 +686,7 @@ class TeamOrchestrator:
                     evidence="",
                     error="老板批准扩大检索时间窗口",
                     accepted_by=None,
+                      meta={},
                 )
             self.store.update_run(run_id, status="running", error="")
             self.store.add_event(
@@ -488,6 +746,7 @@ class TeamOrchestrator:
                     evidence="",
                     error="老板要求重试，整条上游链需要重做",
                     accepted_by=None,
+                      meta={},
                 )
         self.store.update_task(
             task_id,
@@ -554,7 +813,8 @@ class TeamOrchestrator:
     def _prompt(self, task: dict[str, Any], goal: str, workspace: Path, prior: str) -> str:
         safe_prior = prior[-12000:]
         review_feedback = self._review_feedback(task["run_id"])[-3500:]
-        rules = goal_specific_rules(goal)
+        run = self.store.get_run(task["run_id"])
+        rules = goal_specific_rules(goal, run.get("spec") if run else None)
         if task["role"] == "research":
             context = workspace_context(workspace, 5000)
             return (
@@ -565,7 +825,16 @@ class TeamOrchestrator:
                 f"{review_feedback or '(无)'}\n\n"
                 f"工作区文本：\n{context}\n\n"
                 "请联网重新检索并打开可访问来源，优先一手来源。"
-                "逐条给出事件发生日、首次披露日、报道日和链接，不得用旧闻冒充今日新闻。"
+                "逐条给出事件发生日、首次披露日、报道日和链接，不得用旧闻冒充今日新闻。\n\n"
+                "最终回答只能包含一个 JSON 对象，禁止输出 JSON 之外的文字。格式：\n"
+                '{"items":[{"title":"标题","event_date":"YYYY-MM-DD",'
+                '"first_disclosed_at":"YYYY-MM-DD",'
+                '"published_at":"YYYY-MM-DDTHH:MM:SS+08:00",'
+                '"primary_url":"https://...","source_tier":"A|B|C",'
+                '"classification":"news|comment|promotional|aggregate|other",'
+                '"evidence_quote":"支持事实的页面原文"}],'
+                '"excluded":[{"title":"排除项","reason":"原因"}],'
+                '"summary":"缺口与说明"}'
             )
         if task["role"] in ("plan", "analyze"):
             context = workspace_context(workspace, 5000)
@@ -690,15 +959,36 @@ class TeamOrchestrator:
                         artifact_path,
                         web=task["role"] == "research",
                     )
+                    task_meta = dict(task.get("meta") or {})
                     if run_id in self._cancelled:
                         self.store.update_task(task["id"], status="cancelled")
                         self.store.update_run(run_id, status="cancelled")
                         return
                     if result.status == "success":
                         if task["role"] == "research":
+                            evidence_payload = extract_json_object(result.output)
                             link_report = audit_links(result.output)
-                            if link_report:
-                                result.output = result.output.rstrip() + "\n\n" + link_report
+                            validation = validate_news_payload(
+                                evidence_payload,
+                                (self.store.get_run(run_id) or {}).get("spec", {}),
+                                link_report,
+                            )
+                            task_meta["evidence_validation"] = validation
+                            task_meta["link_report"] = link_report
+                            if not validation["structured"]:
+                                result.status = "failed"
+                                result.error = (
+                                    "检索结果未按结构化协议交付："
+                                    + validation.get("error", "JSON 无效")
+                                )
+                            else:
+                                result.output = (
+                                    result.output.rstrip()
+                                    + "\n\n## 机器证据校验\n"
+                                    + json.dumps(validation, ensure_ascii=False, indent=2)
+                                    + ("\n\n" + link_report if link_report else "")
+                                )
+                    if result.status == "success":
                         output_path = self._save_artifact(
                             run_id,
                             task["id"],
@@ -741,6 +1031,7 @@ class TeamOrchestrator:
                                         evidence="",
                                         error="独立复核退回，整条上游链需要重做",
                                         accepted_by=None,
+                                        meta={},
                                     )
                                 self.store.add_event(
                                     run_id,
@@ -785,24 +1076,32 @@ class TeamOrchestrator:
                             evidence=evidence,
                             error="",
                             accepted_by=accepted_by,
+                            meta=task_meta,
                         )
                         if task["role"] == "analyze":
                             tasks = self.store.list_tasks(run_id)
-                            research_text = "\n".join(
-                                item["result"]
-                                for item in tasks
-                                if item["role"] == "research"
+                            research_task = next(
+                                (item for item in tasks if item["role"] == "research"),
+                                None,
                             )
                             analyze_text = result.output
-                            expected = requested_count(goal)
+                            run_spec = (self.store.get_run(run_id) or {}).get("spec", {})
+                            expected = run_spec.get("required_count") or requested_count(goal)
+                            validation = (
+                                (research_task or {}).get("meta", {}).get(
+                                    "evidence_validation", {}
+                                )
+                            )
+                            eligible = validation.get("eligible_count")
                             if (
                                 expected
-                                and reports_shortfall(research_text)
+                                and eligible is not None
+                                and int(eligible) < int(expected)
                                 and reports_shortfall(analyze_text)
                             ):
                                 reason = (
-                                    f"检索与分析均确认目标 {expected} 条，"
-                                    "但严格口径下数量不足。"
+                                    f"机器证据校验仅认定 {eligible} 条，目标 {expected} 条；"
+                                    "分析角色也确认数量不足。"
                                 )
                                 self.store.update_run(
                                     run_id,
@@ -816,6 +1115,8 @@ class TeamOrchestrator:
                                     {
                                         "reason": reason,
                                         "expected_count": expected,
+                                        "eligible_count": eligible,
+                                        "validation": validation,
                                         "options": [
                                             "accept_shortfall",
                                             "expand_scope",

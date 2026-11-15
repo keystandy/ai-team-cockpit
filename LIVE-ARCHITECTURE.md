@@ -37,6 +37,22 @@
 
 任务之间的依赖使用标题引用，结果通过 SQLite 和产物文件传递，不通过自由聊天传递。
 
+## 任务口径
+
+- `today_event`：事件发生日必须是今天。
+- `today_published`：今天刊发或首次披露，事件本身可早于今天。
+- `last_24h`：提供带时区的 ISO 发布时间，由程序比较 24 小时窗口。
+- `last_72h`：最近 72 小时刊发或首次披露。
+- `general`：通用任务。
+
+口径保存到 `runs.spec_json`，所有角色使用同一口径。
+
+## 结构化证据协议
+
+小豆检索结果必须返回 JSON，程序校验标题、三类日期、一手链接、来源等级、
+新闻分类和证据引文，并按 URL/标题去重。程序计算 `eligible_count`，
+只有达到任务要求才进入最终编辑和复核。
+
 ## 状态机
 
 ```text
@@ -98,6 +114,7 @@ run(agent_id, prompt, workspace, artifact_path) -> AgentResult
 GET  /api/health
 GET  /api/agents
 GET  /api/runs
+GET  /api/metrics
 GET  /api/runs/latest
 POST /api/tasks
 GET  /api/runs/{run_id}?after={event_id}

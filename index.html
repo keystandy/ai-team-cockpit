@@ -505,6 +505,23 @@ p {
   gap: var(--space-2);
 }
 
+.task-mode-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+  color: var(--text-secondary);
+}
+
+.task-mode-select {
+  min-height: 32px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
 .shortcut {
   min-height: 32px;
   padding: var(--space-1) var(--space-2);
@@ -1875,6 +1892,17 @@ p {
           <form class="boss-form" id="taskForm" novalidate>
             <label class="sr-only" for="taskInput">任务内容</label>
             <textarea class="task-input t3" id="taskInput" rows="3" placeholder="说清楚要做什么、谁配合、什么时候要。"></textarea>
+            <div class="task-mode-row t4">
+              <label for="taskModeSelect">任务口径</label>
+              <select class="task-mode-select t4" id="taskModeSelect">
+                <option value="auto">自动判断</option>
+                <option value="today_published">今日刊发</option>
+                <option value="today_event">今日发生</option>
+                <option value="last_24h">近 24 小时</option>
+                <option value="last_72h">近 72 小时</option>
+                <option value="general">通用任务</option>
+              </select>
+            </div>
             <div class="shortcuts" aria-label="快捷短语">
               <button class="shortcut t4" type="button" data-shortcut="整理客户反馈">整理客户反馈</button>
               <button class="shortcut t4" type="button" data-shortcut="写一版提纲">写一版提纲</button>
@@ -2114,6 +2142,7 @@ p {
     employees: document.getElementById("employees"),
     taskForm: document.getElementById("taskForm"),
     taskInput: document.getElementById("taskInput"),
+    taskModeSelect: document.getElementById("taskModeSelect"),
     formMessage: document.getElementById("formMessage"),
     decisionPanel: document.getElementById("decisionPanel"),
     decisionReason: document.getElementById("decisionReason"),
@@ -2446,7 +2475,10 @@ p {
     try {
       const result = await apiRequest("/api/tasks", {
         method: "POST",
-        body: JSON.stringify({ goal: text })
+        body: JSON.stringify({
+          goal: text,
+          mode: elements.taskModeSelect.value
+        })
       });
       liveEventId = 0;
       applyLiveState(result.data, { resetEvents: true });

@@ -68,6 +68,9 @@ class TeamRequestHandler(BaseHTTPRequestHandler):
             if path == "/api/runs":
                 self._send_json({"ok": True, "runs": self.store.list_runs()})
                 return
+            if path == "/api/metrics":
+                self._send_json({"ok": True, "metrics": self.store.metrics()})
+                return
             if path == "/api/runs/latest":
                 latest = self.orchestrator.latest()
                 self._send_json({"ok": True, "data": latest})
@@ -99,8 +102,11 @@ class TeamRequestHandler(BaseHTTPRequestHandler):
             if path == "/api/tasks":
                 goal = str(body.get("goal", ""))
                 workspace = body.get("workspace")
+                mode = body.get("mode")
                 data = self.orchestrator.create(
-                    goal, str(workspace).strip() if workspace else None
+                    goal,
+                    str(workspace).strip() if workspace else None,
+                    str(mode).strip() if mode else None,
                 )
                 self._send_json({"ok": True, "data": data}, 201)
                 return
