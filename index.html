@@ -2831,6 +2831,15 @@ p {
   }
 
   function reviewerForTask(task) {
+    if (isLiveMode && task.ownerId === hub.id) {
+      return {
+        id: "boss-human",
+        name: "老板",
+        role: "最终验收",
+        logo: "wb",
+        status: "online"
+      };
+    }
     if (isLiveMode) return hub;
     return task.reviewerId ? agentById.get(task.reviewerId) || null : null;
   }

@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+import json
 import os
 import subprocess
 import time
+import urllib.error
+import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -260,6 +263,75 @@ class DoubaoAdapter:
         )
 
 
+class BangReviewAdapter:
+    def __init__(self, settings: Settings):
+        self.settings = settings
+        self.endpoint = settings.review_base_url.rstrip("/") + "/responses"
+        self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+
+    @staticmethod
+    def _extract_text(payload: dict[str, Any]) -> str:
+        direct = payload.get("output_text")
+        if isinstance(direct, str) and direct.strip():
+            return direct.strip()
+        chunks = []
+        for item in payload.get("output", []):
+            if item.get("type") != "message":
+                continue
+            for content in item.get("content", []):
+                if content.get("type") == "output_text" and content.get("text"):
+                    chunks.append(str(content["text"]))
+        return "\n".join(chunks).strip()
+
+    def run(self, prompt: str, workspace: Path, artifact_path: Path) -> AgentResult:
+        body = json.dumps(
+            {
+                "model": self.settings.review_model,
+                "input": prompt,
+                "max_output_tokens": 3500,
+                "store": False,
+            },
+            ensure_ascii=False,
+        ).encode("utf-8")
+        started = time.monotonic()
+        last_error = ""
+        for attempt in range(3):
+            request = urllib.request.Request(
+                self.endpoint,
+                data=body,
+                method="POST",
+                headers={
+                    "Content-Type": "application/json",
+                    "Accept": "application/json",
+                    "User-Agent": "AI-Team-Bang-Review/1.0",
+                },
+            )
+            try:
+                with self.opener.open(
+                    request, timeout=self.settings.task_timeout_seconds
+                ) as response:
+                    raw = response.read().decode("utf-8", errors="replace")
+                parsed = json.loads(raw)
+                output = self._extract_text(parsed)
+                if not output:
+                    raise ValueError("小棒审核没有返回文本")
+                artifact_path.parent.mkdir(parents=True, exist_ok=True)
+                artifact_path.write_text(redact(output), encoding="utf-8")
+                duration = round(time.monotonic() - started, 2)
+                return AgentResult("bang", "success", redact(output), duration, 0)
+            except urllib.error.HTTPError as exc:
+                last_error = f"HTTP {exc.code}: {exc.reason}"
+                exc.close()
+                if exc.code not in (429, 500, 502, 503, 504):
+                    break
+            except Exception as exc:
+                last_error = f"{type(exc).__name__}: {exc}"
+            if attempt < 2:
+                time.sleep(1 + attempt)
+        duration = round(time.monotonic() - started, 2)
+        return AgentResult("bang", "failed", "", duration, None, last_error)
+
+
 class AdapterRegistry:
     def __init__(self, settings: Settings):
         self.settings = settings
@@ -268,6 +340,7 @@ class AdapterRegistry:
             "ku": CodexAdapter(settings),
             "ke": ClaudeAdapter(settings),
             "dou": DoubaoAdapter(settings),
+            "bang": BangReviewAdapter(settings),
         }
 
     def run(

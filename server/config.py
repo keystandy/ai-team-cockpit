@@ -61,6 +61,8 @@ class Settings:
     claude_exe: Path
     doubao_bridge: Path
     node_exe: str
+    review_base_url: str
+    review_model: str
     host: str
     port: int
     task_timeout_seconds: int
@@ -124,6 +126,10 @@ class Settings:
                 str(AI_TEAM_ROOT / "doubao-bridge" / "doubao.mjs"),
             ),
             node_exe=str(config.get("nodeExe", "node")),
+            review_base_url=str(
+                config.get("reviewBaseUrl", "http://127.0.0.1:15721/v1")
+            ).rstrip("/"),
+            review_model=str(config.get("reviewModel", "deepseek-flash")),
             host=str(config.get("host", "127.0.0.1")),
             port=int(config.get("port", 8765)),
             task_timeout_seconds=int(config.get("taskTimeoutSeconds", 300)),

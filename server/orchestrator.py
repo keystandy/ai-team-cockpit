@@ -190,14 +190,38 @@ def audit_links(text: str, limit: int = 8) -> str:
     return "\n".join(lines)
 
 
-def build_plan(goal: str) -> list[dict[str, Any]]:
-    wants_research = bool(re.search(r"查|最新|联网|图片|看图|资料|研究", goal))
-    wants_change = bool(
+def build_plan(
+    goal: str, spec: dict[str, Any] | None = None
+) -> list[dict[str, Any]]:
+    spec = spec or build_task_spec(goal)
+    instruction = re.split(
+        r"(?:草稿\s*[一二三四五六七八九十\d]*|材料|原文|内容)\s*[：:]",
+        goal,
+        maxsplit=1,
+    )[0][:1500]
+    news_mode = spec.get("mode") in (
+        "today_event",
+        "today_published",
+        "last_24h",
+        "last_72h",
+        "last_custom",
+    )
+    wants_research = news_mode or bool(
+        re.search(r"查|最新|联网|图片|看图|资料|研究", instruction)
+    )
+    engineering_target = bool(
         re.search(
-            r"编写|写代码|修改|改代码|实现|修复|开发|新增|删除|重构|安装|部署",
-            goal,
+            r"代码|程序|项目|函数|接口|文件|脚本|测试|部署|安装|仓库|模块",
+            instruction,
         )
     )
+    change_action = bool(
+        re.search(
+            r"修复|修改|实现|开发|新增|添加|删除|重构|升级|编写|改写",
+            instruction,
+        )
+    )
+    wants_change = engineering_target and change_action
     tasks: list[dict[str, Any]] = []
     if wants_research:
         tasks.append(
@@ -246,8 +270,8 @@ def build_plan(goal: str) -> list[dict[str, Any]]:
     tasks.append(
         {
             "role": "review",
-            "agent_id": "ke",
-            "title": "独立复核",
+            "agent_id": "bang",
+            "title": "小棒审核",
             "deps": [dependent],
             "acceptance": "给出 PASS 或 RETURN，并附具体文件和证据",
         }
@@ -258,7 +282,20 @@ def build_plan(goal: str) -> list[dict[str, Any]]:
 def build_task_spec(goal: str, mode_override: str | None = None) -> dict[str, Any]:
     mode = (mode_override or "auto").strip().lower()
     if mode == "auto":
-        if re.search(r"近\s*72\s*小时|近\s*3\s*天|三天", goal):
+        instruction = re.split(
+            r"(?:草稿\s*[一二三四五六七八九十\d]*|材料|原文|内容)\s*[：:]",
+            goal,
+            maxsplit=1,
+        )[0][:1500]
+        formatting_only = bool(
+            re.search(
+                r"格式整理|整理.*格式|新闻格式|按下面格式|审核以下|仅做格式|只做格式",
+                instruction,
+            )
+        ) and not re.search(r"查|检索|联网|最新|搜索", instruction)
+        if formatting_only:
+            mode = "general"
+        elif re.search(r"近\s*72\s*小时|近\s*3\s*天|三天", goal):
             mode = "last_72h"
         elif re.search(r"近\s*24\s*小时|过去一天|昨天", goal):
             mode = "last_24h"
@@ -328,6 +365,9 @@ def goal_specific_rules(goal: str, spec: dict[str, Any] | None = None) -> str:
             "每条必须列明事件发生日、首次披露日、报道日、可访问的一手来源链接、"
             "来源等级和新闻分类。评论、宣传稿、聚合短讯必须单列，不能凑入条数。"
             "数量不足时明确说不足，不得用旧闻或无关条目填充。"
+            "最终新闻稿按主题分组，每组使用 `### 🚀 主题名称`，"
+            "每条使用 `**1. 标题**`，随后用两段简洁事实说明；"
+            "没有合格条目时明确写数量缺口，不得编造标题。"
         )
     if re.search(r"架构|优点|缺点|改进|方案|设计", goal):
         return (
@@ -573,7 +613,7 @@ class TeamOrchestrator:
         run_id = self.run_id()
         workspace = self.settings.create_workspace(run_id, workspace_name)
         spec = build_task_spec(goal, mode_override)
-        plan = build_plan(goal)
+        plan = build_plan(goal, spec)
         self.store.create_run(run_id, goal, workspace, plan, spec)
         self.store.add_event(
             run_id,
@@ -713,19 +753,20 @@ class TeamOrchestrator:
             raise ValueError("没有证据，不能通过验收")
         if task["role"] == "review" and not review_passes(task["result"]):
             raise ValueError("复核结论不是 PASS，不能通过验收")
-        self.store.update_task(
-            task_id,
-            status="accepted",
-            accepted_by=accepted_by,
-        )
-        self.store.update_run(run_id, status="accepted")
-        self.store.add_event(
-            run_id,
-            "task.accepted",
-            accepted_by,
-            {"title": task["title"], "evidence": task["evidence"]},
-            task_id,
-        )
+        with self._lock:
+            self.store.update_task(
+                task_id,
+                status="accepted",
+                accepted_by=accepted_by,
+            )
+            self.store.update_run(run_id, status="accepted")
+            self.store.add_event(
+                run_id,
+                "task.accepted",
+                accepted_by,
+                {"title": task["title"], "evidence": task["evidence"]},
+                task_id,
+            )
         return self.state(run_id)
 
     def retry(self, run_id: str, task_id: str) -> dict[str, Any]:
@@ -873,7 +914,7 @@ class TeamOrchestrator:
                 "未完成项和风险。不要声称完成，等待独立复核。"
             )
         return (
-            "你是独立验收员。不要修改文件，不要相信实现者自述。\n"
+            "你是小棒，负责最终审核。不要修改文件，不要相信实现者自述。\n"
             f"总目标：{goal}\n工作目录：{workspace}\n\n"
             f"任务专用验收口径：\n{rules}\n\n"
             f"当前 AI 团队关键制度：\n{team_context(3500)}\n\n"
@@ -881,6 +922,8 @@ class TeamOrchestrator:
             "只根据以上材料做只读审查，不要调用工具。"
             "第一行必须是 PASS 或 RETURN。"
             "之后用不超过 800 字列出检查项、证据、未解决风险和最终建议。"
+            "如果任务要求新闻格式，同时检查 `### 🚀` 分组、编号加粗标题和"
+            "两段事实说明是否完整。"
         )
 
     def _save_artifact(
@@ -1138,6 +1181,14 @@ class TeamOrchestrator:
                             },
                             task["id"],
                         )
+                        if task["role"] == "review":
+                            with self._lock:
+                                current_run = self.store.get_run(run_id)
+                                if current_run and current_run["status"] != "accepted":
+                                    self.store.update_run(
+                                        run_id, status="pending_review"
+                                    )
+                            return
                         break
 
                     self.store.update_task(

@@ -11,6 +11,8 @@
   "codexHome": "E:\\WorkBuddy工作空间\\codex-bridge\\codex-home",
   "claudeExe": "D:\\Programs\\claude-code\\claude.exe",
   "doubaoBridge": "E:\\WorkBuddy工作空间\\doubao-bridge\\doubao.mjs",
-  "nodeExe": "node"
+  "nodeExe": "node",
+  "reviewBaseUrl": "http://127.0.0.1:15721/v1",
+  "reviewModel": "deepseek-flash"
 }
 

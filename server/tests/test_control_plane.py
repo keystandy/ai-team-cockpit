@@ -23,7 +23,11 @@ from server.store import TeamStore
 class FakeAdapters:
     def run(self, agent_id, prompt, workspace, artifact_path, web=False):
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
-        output = "PASS\n证据：测试产物" if agent_id == "ke" else f"{agent_id} completed"
+        output = (
+            "PASS\n证据：测试产物"
+            if agent_id in ("ke", "bang")
+            else f"{agent_id} completed"
+        )
         artifact_path.write_text(output + "\n", encoding="utf-8")
         return AgentResult(
             agent_id=agent_id,
@@ -40,7 +44,7 @@ class ReturnOnceAdapters:
 
     def run(self, agent_id, prompt, workspace, artifact_path, web=False):
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
-        if agent_id == "ke":
+        if agent_id == "bang":
             self.review_calls += 1
             output = "RETURN\n证据不足" if self.review_calls == 1 else "PASS\n证据完成"
         else:
@@ -57,12 +61,12 @@ class ReturnOnceAdapters:
 
 class ShortfallAdapters:
     def __init__(self):
-        self.calls = {"dou": 0, "shen": 0, "ke": 0}
+        self.calls = {"dou": 0, "shen": 0, "bang": 0}
 
     def run(self, agent_id, prompt, workspace, artifact_path, web=False):
         self.calls[agent_id] += 1
         artifact_path.parent.mkdir(parents=True, exist_ok=True)
-        if agent_id == "ke":
+        if agent_id == "bang":
             output = "PASS\n老板已批准不足交付"
         elif agent_id == "dou":
             output = json.dumps(
@@ -128,6 +132,19 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertEqual(
             [task["role"] for task in build_plan("修复代码并运行测试")],
             ["plan", "implement", "review"],
+        )
+        self.assertEqual(
+            [task["role"] for task in build_plan("整理新闻格式，不新增事实")],
+            ["analyze", "review"],
+        )
+        self.assertEqual(
+            [
+                task["role"]
+                for task in build_plan(
+                    "仅整理格式。草稿1：某模型部署到搜索并改写内核代码。"
+                )
+            ],
+            ["analyze", "review"],
         )
 
     def test_task_spec_distinguishes_news_modes(self) -> None:
@@ -255,12 +272,12 @@ class ControlPlaneTests(unittest.TestCase):
     def test_review_return_reruns_research_chain(self) -> None:
         class NewsAdapters:
             def __init__(self):
-                self.calls = {"dou": 0, "shen": 0, "ke": 0}
+                self.calls = {"dou": 0, "shen": 0, "bang": 0}
 
             def run(self, agent_id, prompt, workspace, artifact_path, web=False):
                 self.calls[agent_id] += 1
                 artifact_path.parent.mkdir(parents=True, exist_ok=True)
-                if agent_id == "ke":
+                if agent_id == "bang":
                     output = (
                         "RETURN\n补检索一手来源"
                         if self.calls[agent_id] == 1
@@ -299,7 +316,7 @@ class ControlPlaneTests(unittest.TestCase):
         while time.time() < deadline:
             state = orchestrator.state(run_id)
             if state["run"]["status"] == "pending_review":
-                self.assertEqual(adapters.calls, {"dou": 2, "shen": 2, "ke": 2})
+                self.assertEqual(adapters.calls, {"dou": 2, "shen": 2, "bang": 2})
                 time.sleep(0.15)
                 return
             time.sleep(0.02)
@@ -314,7 +331,7 @@ class ControlPlaneTests(unittest.TestCase):
         while time.time() < deadline:
             run = orchestrator.state(run_id)["run"]
             if run["status"] == "needs_decision":
-                self.assertEqual(adapters.calls, {"dou": 1, "shen": 1, "ke": 0})
+                self.assertEqual(adapters.calls, {"dou": 1, "shen": 1, "bang": 0})
                 orchestrator.decide(run_id, "accept_shortfall")
                 break
             time.sleep(0.02)
@@ -324,7 +341,7 @@ class ControlPlaneTests(unittest.TestCase):
         while time.time() < deadline:
             state = orchestrator.state(run_id)
             if state["run"]["status"] == "pending_review":
-                self.assertEqual(adapters.calls["ke"], 1)
+                self.assertEqual(adapters.calls["bang"], 1)
                 self.assertEqual(state["run"]["decision"], "accept_shortfall")
                 time.sleep(0.15)
                 return
@@ -349,7 +366,7 @@ class ControlPlaneTests(unittest.TestCase):
             run = orchestrator.state(run_id)["run"]
             if run["status"] == "needs_decision" and adapters.calls["dou"] == 2:
                 self.assertEqual(adapters.calls["shen"], 2)
-                self.assertEqual(adapters.calls["ke"], 0)
+                self.assertEqual(adapters.calls["bang"], 0)
                 self.assertEqual(run["decision"], "expand_scope")
                 time.sleep(0.15)
                 return
