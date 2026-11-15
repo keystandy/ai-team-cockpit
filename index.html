@@ -2482,7 +2482,15 @@ p {
       });
       liveEventId = 0;
       applyLiveState(result.data, { resetEvents: true });
-      setFormMessage("任务已进入真实执行队列。", false);
+      const spec = result.data.run.spec || {};
+      const count = spec.required_count ? `，目标 ${spec.required_count} 条` : "";
+      const window = spec.window_days !== null && spec.window_days !== undefined
+        ? `，窗口 ${spec.window_days} 天`
+        : "";
+      setFormMessage(
+        `任务已进入执行队列：${spec.mode_label || spec.mode || "通用任务"}${window}${count}。`,
+        false
+      );
       if (!livePollTimer) {
         livePollTimer = window.setInterval(() => {
           refreshLiveState().catch((error) => {

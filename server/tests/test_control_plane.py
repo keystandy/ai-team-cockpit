@@ -157,6 +157,17 @@ class ControlPlaneTests(unittest.TestCase):
         self.assertEqual(
             build_task_spec("查近24小时AI新闻5条")["window_days"], 1
         )
+        natural = build_task_spec("收集最近1星期内3个重大AI行业新闻")
+        self.assertEqual(natural["mode"], "last_custom")
+        self.assertEqual(natural["window_days"], 7)
+        self.assertEqual(natural["required_count"], 3)
+        self.assertEqual(
+            build_task_spec("查最近两周的三则 AI 新闻")["required_count"], 3
+        )
+
+    def test_news_task_without_count_is_rejected_before_execution(self) -> None:
+        with self.assertRaisesRegex(ValueError, "必须明确需要多少条"):
+            self.orchestrator.create("查今天的 AI 行业新闻", None)
 
     def test_structured_evidence_validation_counts_only_news(self) -> None:
         spec = {

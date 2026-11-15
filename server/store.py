@@ -296,6 +296,10 @@ class TeamStore:
         accepted_at = task["accepted_at"]
         if status in ("pending_review", "failed", "blocked", "cancelled"):
             finished_at = stamp
+        if status in ("waiting", "running"):
+            finished_at = None
+        if status in ("waiting", "running", "failed", "blocked", "cancelled"):
+            accepted_at = None
         if status == "accepted":
             accepted_at = stamp
         next_meta = meta if meta is not None else task["meta"]

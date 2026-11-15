@@ -279,14 +279,63 @@ def build_plan(
     return tasks
 
 
+CHINESE_DIGITS = {
+    "一": 1,
+    "二": 2,
+    "两": 2,
+    "三": 3,
+    "四": 4,
+    "五": 5,
+    "六": 6,
+    "七": 7,
+    "八": 8,
+    "九": 9,
+}
+
+
+def parse_number(value: str) -> int | None:
+    if value.isdigit():
+        return int(value)
+    if value in CHINESE_DIGITS:
+        return CHINESE_DIGITS[value]
+    if value == "十":
+        return 10
+    if value.startswith("十") and value[1:] in CHINESE_DIGITS:
+        return 10 + CHINESE_DIGITS[value[1:]]
+    if value.endswith("十") and value[:-1] in CHINESE_DIGITS:
+        return CHINESE_DIGITS[value[:-1]] * 10
+    if "十" in value:
+        left, _, right = value.partition("十")
+        if left in CHINESE_DIGITS and right in CHINESE_DIGITS:
+            return CHINESE_DIGITS[left] * 10 + CHINESE_DIGITS[right]
+    return None
+
+
 def build_task_spec(goal: str, mode_override: str | None = None) -> dict[str, Any]:
     mode = (mode_override or "auto").strip().lower()
+    instruction = re.split(
+        r"(?:草稿\s*[一二三四五六七八九十\d]*|材料|原文|内容)\s*[：:]",
+        goal,
+        maxsplit=1,
+    )[0][:1500]
+    window_match = re.search(
+        r"(?:近|最近|过去|within)?\s*(\d+|[一二两三四五六七八九十]+)\s*"
+        r"(?:个)?\s*(小时|天|日|周|星期|月)",
+        instruction,
+    )
+    explicit_window = None
+    if window_match:
+        amount = parse_number(window_match.group(1))
+        unit = window_match.group(2)
+        if amount is not None:
+            explicit_window = amount * (
+                30 if unit == "月" else 7 if unit in ("周", "星期") else 1
+            )
+            if unit == "小时" and amount > 24:
+                explicit_window = max(1, round(amount / 24))
+            elif unit == "小时":
+                explicit_window = 1
     if mode == "auto":
-        instruction = re.split(
-            r"(?:草稿\s*[一二三四五六七八九十\d]*|材料|原文|内容)\s*[：:]",
-            goal,
-            maxsplit=1,
-        )[0][:1500]
         formatting_only = bool(
             re.search(
                 r"格式整理|整理.*格式|新闻格式|按下面格式|审核以下|仅做格式|只做格式",
@@ -295,13 +344,17 @@ def build_task_spec(goal: str, mode_override: str | None = None) -> dict[str, An
         ) and not re.search(r"查|检索|联网|最新|搜索", instruction)
         if formatting_only:
             mode = "general"
-        elif re.search(r"近\s*72\s*小时|近\s*3\s*天|三天", goal):
-            mode = "last_72h"
-        elif re.search(r"近\s*24\s*小时|过去一天|昨天", goal):
-            mode = "last_24h"
-        elif re.search(r"发生|快讯", goal):
+        elif explicit_window is not None:
+            mode = (
+                "last_72h"
+                if explicit_window == 3
+                else "last_24h"
+                if explicit_window == 1
+                else "last_custom"
+            )
+        elif re.search(r"发生|快讯", instruction):
             mode = "today_event"
-        elif re.search(r"新闻|资讯|最新|今天|今日", goal):
+        elif re.search(r"新闻|资讯|最新|今天|今日", instruction):
             mode = "today_published"
         else:
             mode = "general"
@@ -310,7 +363,9 @@ def build_task_spec(goal: str, mode_override: str | None = None) -> dict[str, An
         "today_published": "今日刊发",
         "last_24h": "近24小时",
         "last_72h": "近72小时",
-        "last_custom": "自定义时间窗口",
+        "last_custom": (
+            f"近{explicit_window}天" if explicit_window else "自定义时间窗口"
+        ),
         "general": "通用任务",
     }
     if mode not in labels:
@@ -320,16 +375,34 @@ def build_task_spec(goal: str, mode_override: str | None = None) -> dict[str, An
         "today_published": 0,
         "last_24h": 1,
         "last_72h": 3,
-        "last_custom": None,
+        "last_custom": explicit_window,
         "general": None,
     }
+    required = requested_count(instruction)
     return {
         "mode": mode,
         "mode_label": labels[mode],
-        "required_count": requested_count(goal),
+        "required_count": required,
         "window_days": windows[mode],
         "strict_event_date": mode == "today_event",
     }
+
+
+def validate_task_spec(spec: dict[str, Any]) -> list[str]:
+    errors = []
+    mode = spec.get("mode")
+    if mode in (
+        "today_event",
+        "today_published",
+        "last_24h",
+        "last_72h",
+        "last_custom",
+    ):
+        if not spec.get("required_count"):
+            errors.append("新闻任务必须明确需要多少条，例如“3条”或“3个”")
+        if mode == "last_custom" and not spec.get("window_days"):
+            errors.append("自定义时间窗口必须明确天数、周数或月数")
+    return errors
 
 
 def goal_specific_rules(goal: str, spec: dict[str, Any] | None = None) -> str:
@@ -381,8 +454,11 @@ def goal_specific_rules(goal: str, spec: dict[str, Any] | None = None) -> str:
 
 
 def requested_count(goal: str) -> int | None:
-    match = re.search(r"(\d+)\s*条", goal)
-    return int(match.group(1)) if match else None
+    match = re.search(
+        r"(\d+|[一二两三四五六七八九十]+)\s*(?:条|个|则|篇)",
+        goal,
+    )
+    return parse_number(match.group(1)) if match else None
 
 
 def extract_json_object(text: str) -> dict[str, Any] | None:
@@ -613,6 +689,9 @@ class TeamOrchestrator:
         run_id = self.run_id()
         workspace = self.settings.create_workspace(run_id, workspace_name)
         spec = build_task_spec(goal, mode_override)
+        spec_errors = validate_task_spec(spec)
+        if spec_errors:
+            raise ValueError("任务口径不完整：" + "；".join(spec_errors))
         plan = build_plan(goal, spec)
         self.store.create_run(run_id, goal, workspace, plan, spec)
         self.store.add_event(
@@ -866,6 +945,8 @@ class TeamOrchestrator:
                 f"{review_feedback or '(无)'}\n\n"
                 f"工作区文本：\n{context}\n\n"
                 "请联网重新检索并打开可访问来源，优先一手来源。"
+                "如果存在上一轮复核反馈，这是增量补齐任务：保留仍合格的条目，"
+                "只补充缺失条目；最终 JSON 必须包含合并后的全部候选。"
                 "逐条给出事件发生日、首次披露日、报道日和链接，不得用旧闻冒充今日新闻。\n\n"
                 "最终回答只能包含一个 JSON 对象，禁止输出 JSON 之外的文字。格式：\n"
                 '{"items":[{"title":"标题","event_date":"YYYY-MM-DD",'
@@ -921,7 +1002,12 @@ class TeamOrchestrator:
             f"全部上游结果：\n{safe_prior}\n\n"
             "只根据以上材料做只读审查，不要调用工具。"
             "第一行必须是 PASS 或 RETURN。"
-            "之后用不超过 800 字列出检查项、证据、未解决风险和最终建议。"
+            "之后输出一个 JSON 对象，格式："
+            '{"decision":"PASS|RETURN","keep":["保留标题"],'
+            '"drop":[{"title":"剔除标题","reason":"原因"}],'
+            '"missing_count":0,"required_action":'
+            '"NONE|SUPPLEMENT_SEARCH|REVISE|HUMAN_DECISION"}'
+            "JSON 后再用不超过 500 字解释关键证据和风险。"
             "如果任务要求新闻格式，同时检查 `### 🚀` 分组、编号加粗标题和"
             "两段事实说明是否完整。"
         )
@@ -1053,6 +1139,13 @@ class TeamOrchestrator:
                                 diff_text,
                             )
                             evidence = f"{output_path}; {diff_path}"
+                        review_payload = (
+                            extract_json_object(result.output) or {}
+                            if task["role"] == "review"
+                            else {}
+                        )
+                        if task["role"] == "review":
+                            task_meta["review_decision"] = review_payload
                         if task["role"] == "review" and not review_passes(result.output):
                             reason = result.output.strip()[:2000] or "复核退回"
                             if task["attempt"] < task["max_attempts"]:
@@ -1066,16 +1159,45 @@ class TeamOrchestrator:
                                 for upstream in self.store.list_tasks(run_id):
                                     if upstream["seq"] >= task["seq"]:
                                         continue
-                                    self.store.update_task(
-                                        upstream["id"],
-                                        status="waiting",
-                                        attempt=0,
-                                        result="",
-                                        evidence="",
-                                        error="独立复核退回，整条上游链需要重做",
-                                        accepted_by=None,
-                                        meta={},
+                                    news_mode = (run.get("spec") or {}).get(
+                                        "mode"
+                                    ) in (
+                                        "today_event",
+                                        "today_published",
+                                        "last_24h",
+                                        "last_72h",
+                                        "last_custom",
                                     )
+                                    if news_mode and upstream["role"] == "research":
+                                        self.store.update_task(
+                                            upstream["id"],
+                                            status="waiting",
+                                            attempt=0,
+                                            error="小棒要求增量补齐缺失新闻",
+                                            accepted_by=None,
+                                        )
+                                    elif news_mode and upstream["role"] == "analyze":
+                                        self.store.update_task(
+                                            upstream["id"],
+                                            status="waiting",
+                                            attempt=0,
+                                            result="",
+                                            evidence="",
+                                            error="等待补充检索后重新整理",
+                                            accepted_by=None,
+                                            meta={},
+                                        )
+                                    else:
+                                        self.store.update_task(
+                                            upstream["id"],
+                                            status="waiting",
+                                            attempt=0,
+                                            result="",
+                                            evidence="",
+                                            error="独立复核退回，上游任务需要重做",
+                                            accepted_by=None,
+                                            meta={},
+                                        )
                                 self.store.add_event(
                                     run_id,
                                     "review.returned",
@@ -1084,6 +1206,7 @@ class TeamOrchestrator:
                                         "title": task["title"],
                                         "reason": reason,
                                         "evidence": str(output_path),
+                                        "review": review_payload,
                                     },
                                     task["id"],
                                 )
