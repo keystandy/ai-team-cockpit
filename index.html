@@ -610,15 +610,29 @@ p {
 
 .hub-card {
   width: 100%;
-  min-height: 64px;
+  min-height: 116px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-0);
+  text-align: left;
+  overflow: hidden;
+}
+
+.hub-select {
+  align-self: stretch;
+  flex: 0 0 42%;
+  min-width: 300px;
   padding: var(--space-4);
   display: flex;
   align-items: center;
   gap: var(--space-3);
+  border: 0;
+  background: transparent;
+  color: inherit;
   text-align: left;
 }
 
-.hub-card:hover {
+.hub-select:hover {
   background: var(--bg-subtle);
 }
 
@@ -647,6 +661,77 @@ p {
   gap: var(--space-2);
   color: var(--text-secondary);
   text-align: right;
+}
+
+.hub-output {
+  align-self: stretch;
+  flex: 1;
+  min-width: 0;
+  padding: var(--space-3) var(--space-4);
+  border-left: 1px solid var(--border-subtle);
+  background: var(--bg-subtle);
+}
+
+.hub-output.is-failed {
+  background: var(--status-failed-soft);
+}
+
+.hub-output.is-pending {
+  background: var(--status-busy-soft);
+}
+
+.hub-output-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+
+.hub-output-title {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.hub-output-status {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+}
+
+.hub-output-copy {
+  margin: var(--space-1) 0 0;
+  min-height: 20px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.hub-output-details {
+  max-height: 120px;
+  margin: var(--space-2) 0 0;
+  padding: var(--space-2);
+  overflow: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+  color: var(--status-failed);
+  font-family: inherit;
+}
+
+.hub-output-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+  margin-top: var(--space-2);
+}
+
+.hub-output-actions .button {
+  min-height: 28px;
+  padding: var(--space-0) var(--space-2);
 }
 
 .employees {
@@ -1661,6 +1746,18 @@ p {
     text-align: left;
   }
 
+  .hub-select {
+    flex: 1 1 auto;
+    min-width: 0;
+    width: 100%;
+  }
+
+  .hub-output {
+    width: 100%;
+    border-top: 1px solid var(--border-subtle);
+    border-left: 0;
+  }
+
   .employees,
   .rail {
     grid-template-columns: minmax(0, 1fr);
@@ -1810,20 +1907,37 @@ p {
           <span class="flow-label t4">小棒派活</span>
         </div>
 
-        <button class="flow-card hub-card" id="hubCard" type="button" aria-label="查看小棒详情">
-          <span class="logo-box" id="hubLogo" aria-hidden="true"></span>
-          <span class="hub-main">
-            <span class="hub-title-row">
-              <span class="t2">小棒</span>
-              <span class="muted t4">老板 AI · 拆解与分派</span>
+        <section class="flow-card hub-card" id="hubCard" aria-labelledby="hubTitle">
+          <button class="hub-select" id="hubSelectButton" type="button" aria-label="查看小棒详情">
+            <span class="logo-box" id="hubLogo" aria-hidden="true"></span>
+            <span class="hub-main">
+              <span class="hub-title-row">
+                <span class="t2" id="hubTitle">小棒</span>
+                <span class="muted t4">老板 AI · 拆解与分派</span>
+              </span>
+              <span class="hub-meta t4" id="hubMeta">等待发布任务</span>
             </span>
-            <span class="hub-meta t4" id="hubMeta">等待发布任务</span>
-          </span>
-          <span class="hub-state t4" id="hubState">
-            <span class="status-symbol status-online" aria-hidden="true">●</span>
-            <span>在线</span>
-          </span>
-        </button>
+            <span class="hub-state t4" id="hubState">
+              <span class="status-symbol status-online" aria-hidden="true">●</span>
+              <span>在线</span>
+            </span>
+          </button>
+          <div class="hub-output" id="hubOutput" aria-live="polite">
+            <div class="hub-output-head">
+              <span class="hub-output-title t3">输出结果</span>
+              <span class="hub-output-status t4" id="hubOutputStatus">等待任务</span>
+            </div>
+            <p class="hub-output-copy t4" id="hubOutputCopy">任务运行后，这里显示最终输出或异常摘要。</p>
+            <pre class="hub-output-details t4" id="hubOutputDetails" hidden></pre>
+            <div class="hub-output-actions">
+              <button class="button button-text t4" id="hubOutputToggle" type="button" hidden>展开异常</button>
+              <button class="button button-text t4" id="hubOutputCopyError" type="button" hidden>复制异常</button>
+              <button class="button button-text t4" id="hubOutputEvidence" type="button" hidden>复制证据</button>
+              <button class="button t4" id="hubOutputRetry" type="button" hidden>重试失败任务</button>
+              <button class="button button-text t4" id="hubOutputCancel" type="button" hidden>取消运行</button>
+            </div>
+          </div>
+        </section>
 
         <div class="flow-gap" aria-hidden="true">
           <span class="flow-label t4">成员接活</span>
@@ -1974,8 +2088,18 @@ p {
     edgeGroup: document.getElementById("edgeGroup"),
     bossCard: document.getElementById("bossCard"),
     hubCard: document.getElementById("hubCard"),
+    hubSelectButton: document.getElementById("hubSelectButton"),
     hubMeta: document.getElementById("hubMeta"),
     hubState: document.getElementById("hubState"),
+    hubOutput: document.getElementById("hubOutput"),
+    hubOutputStatus: document.getElementById("hubOutputStatus"),
+    hubOutputCopy: document.getElementById("hubOutputCopy"),
+    hubOutputDetails: document.getElementById("hubOutputDetails"),
+    hubOutputToggle: document.getElementById("hubOutputToggle"),
+    hubOutputCopyError: document.getElementById("hubOutputCopyError"),
+    hubOutputEvidence: document.getElementById("hubOutputEvidence"),
+    hubOutputRetry: document.getElementById("hubOutputRetry"),
+    hubOutputCancel: document.getElementById("hubOutputCancel"),
     employees: document.getElementById("employees"),
     taskForm: document.getElementById("taskForm"),
     taskInput: document.getElementById("taskInput"),
@@ -2026,9 +2150,12 @@ p {
   let newArtifactId = null;
   let artifactDialogTrigger = null;
   let liveRunId = null;
+  let liveRun = null;
   let liveEventId = 0;
   let livePollTimer = null;
   let liveEvents = [];
+  let hubOutputTaskId = null;
+  let hubErrorExpanded = false;
   const demoArtifactJobs = new Set();
   const returnEditors = new Set();
   const returnDrafts = new Map();
@@ -2200,7 +2327,12 @@ p {
   function applyLiveState(payload, { resetEvents = false } = {}) {
     const run = payload.run;
     const taskById = new Map((payload.tasks || []).map((task) => [task.id, task]));
+    if (liveRunId !== run.id) {
+      hubOutputTaskId = null;
+      hubErrorExpanded = false;
+    }
     liveRunId = run.id;
+    liveRun = run;
     tasks = (payload.tasks || []).map((task) => liveTaskToUi(task, run));
     const latestArtifacts = new Map();
     (payload.artifacts || [])
@@ -2368,6 +2500,26 @@ p {
       }
     } catch (error) {
       setFormMessage(`决策提交失败：${error.message}`, true);
+    }
+  }
+
+  async function cancelLiveRun() {
+    if (!isLiveMode || !liveRunId) return;
+    const approved = await confirmAction(
+      "确认取消运行",
+      "取消后当前等待、执行和待验收任务都会停止推进，历史记录会保留。",
+      "确认取消"
+    );
+    if (!approved) return;
+    try {
+      const result = await apiRequest(
+        `/api/runs/${encodeURIComponent(liveRunId)}/cancel`,
+        { method: "POST", body: "{}" }
+      );
+      applyLiveState(result.data);
+      setFormMessage("运行已取消。", false);
+    } catch (error) {
+      setFormMessage(`取消失败：${error.message}`, true);
     }
   }
 
@@ -2806,11 +2958,12 @@ p {
       const shellRect = elements.flowShell.getBoundingClientRect();
       const bossRect = elements.bossCard.getBoundingClientRect();
       const hubRect = elements.hubCard.getBoundingClientRect();
+      const hubSelectRect = elements.hubSelectButton.getBoundingClientRect();
       if (!shellRect.width || !shellRect.height) return;
 
       const bossX = bossRect.left - shellRect.left + bossRect.width / 2;
       const bossY = bossRect.bottom - shellRect.top;
-      const hubX = hubRect.left - shellRect.left + hubRect.width / 2;
+      const hubX = hubSelectRect.left - shellRect.left + hubSelectRect.width / 2;
       const hubTop = hubRect.top - shellRect.top;
       const hubBottom = hubRect.bottom - shellRect.top;
       const hasWaiting = tasks.some((task) => task.status === "waiting");
@@ -2818,7 +2971,11 @@ p {
       const selectedRunning = tasks.find((task) => task.ownerId === selectedAgentId && task.status === "running");
       const bossState = hasWaiting || hasRunning ? "current" : "default";
 
-      let markup = connectorMarkup("boss-hub", `M ${bossX} ${bossY} V ${hubTop}`, bossState);
+      let markup = connectorMarkup(
+        "boss-hub",
+        roundedBranch(bossX, bossY, hubX, hubTop),
+        bossState
+      );
       const employeeCards = Array.from(elements.employees.querySelectorAll(".employee-card"));
       employeeCards.forEach((card) => {
         const agentId = card.dataset.agentId;
@@ -2837,6 +2994,60 @@ p {
 
   function renderHubState() {
     renderFlowState();
+  }
+
+  function renderHubOutput() {
+    const failedTask = tasks.find((task) => task.status === "failed") || null;
+    const runningTask = tasks.find((task) => task.status === "running") || null;
+    const pendingTask = tasks.find((task) => task.status === "pending") || null;
+    const outputTask = failedTask || runningTask || pendingTask || tasks[tasks.length - 1] || null;
+    const taskId = outputTask ? outputTask.id : null;
+    if (taskId !== hubOutputTaskId) {
+      hubOutputTaskId = taskId;
+      hubErrorExpanded = false;
+    }
+
+    const liveStatus = liveRun ? liveRun.status : null;
+    const needsDecision = liveStatus === "needs_decision";
+    const failed = Boolean(failedTask || liveStatus === "failed" || liveStatus === "blocked");
+    const pending = Boolean(pendingTask || liveStatus === "pending_review");
+    elements.hubOutput.classList.toggle("is-failed", failed);
+    elements.hubOutput.classList.toggle("is-pending", pending || needsDecision);
+
+    const error = needsDecision
+      ? (liveRun?.output || "检索与分析均确认当前口径无法完成，等待老板决策。")
+      : (outputTask?.failureHistory?.[0]?.reason || liveRun?.error || "");
+    const result = outputTask?.result || "";
+    let statusLabel = "等待任务";
+    let copy = "任务运行后，这里显示最终输出或异常摘要。";
+    if (needsDecision) {
+      statusLabel = "等待决策";
+      copy = liveRun?.output || "当前目标无法按原口径完成，等待老板选择。";
+    } else if (failed) {
+      statusLabel = "执行异常";
+      copy = error || "任务执行失败，未返回异常详情。";
+    } else if (runningTask) {
+      statusLabel = "输出中";
+      copy = result || `正在执行「${runningTask.title}」，等待模型返回。`;
+    } else if (pendingTask) {
+      statusLabel = "待验收";
+      copy = result || `「${pendingTask.title}」已交活，等待独立验收。`;
+    } else if (outputTask) {
+      statusLabel = outputTask.status === "accepted" ? "已完成" : STATUS[outputTask.status].label;
+      copy = result || `${outputTask.title}：暂无文本输出。`;
+    }
+
+    elements.hubOutputStatus.textContent = statusLabel;
+    elements.hubOutputCopy.textContent = truncate(copy, 260);
+    elements.hubOutputDetails.textContent = error;
+    elements.hubOutputDetails.hidden = !error || !hubErrorExpanded;
+    elements.hubOutputToggle.hidden = !error;
+    elements.hubOutputToggle.textContent = hubErrorExpanded ? "收起异常" : "展开异常";
+    elements.hubOutputCopyError.hidden = !error;
+    elements.hubOutputEvidence.hidden = !outputTask?.evidence;
+    elements.hubOutputRetry.hidden = !failedTask;
+    elements.hubOutputCancel.hidden = !isLiveMode || !liveRun
+      || !["running", "waiting", "pending_review", "needs_decision"].includes(liveRun.status);
   }
 
   function currentTaskTitle() {
@@ -3067,6 +3278,7 @@ p {
 
   function renderAll() {
     renderHubState();
+    renderHubOutput();
     renderMemberDetail();
     renderTickets();
     renderArtifacts();
@@ -3508,6 +3720,33 @@ p {
     submitLiveDecision("cancel");
   });
 
+  elements.hubOutputToggle.addEventListener("click", () => {
+    hubErrorExpanded = !hubErrorExpanded;
+    renderHubOutput();
+  });
+
+  elements.hubOutputCopyError.addEventListener("click", async (event) => {
+    const failedTask = tasks.find((task) => task.status === "failed");
+    const error = liveRun?.status === "needs_decision"
+      ? liveRun.output
+      : failedTask?.failureHistory?.[0]?.reason || liveRun?.error || "";
+    if (error) await copyText(error, event.currentTarget);
+  });
+
+  elements.hubOutputEvidence.addEventListener("click", async (event) => {
+    const task = [...tasks].reverse().find((item) => item.evidence);
+    if (task?.evidence) await copyText(task.evidence, event.currentTarget);
+  });
+
+  elements.hubOutputRetry.addEventListener("click", async () => {
+    const task = tasks.find((item) => item.status === "failed");
+    if (task) await retryTask(task);
+  });
+
+  elements.hubOutputCancel.addEventListener("click", () => {
+    cancelLiveRun();
+  });
+
   document.querySelectorAll("[data-shortcut]").forEach((button) => {
     button.addEventListener("click", () => {
       elements.taskInput.value = button.dataset.shortcut || "";
@@ -3517,7 +3756,7 @@ p {
     });
   });
 
-  elements.hubCard.addEventListener("click", () => {
+  elements.hubSelectButton.addEventListener("click", () => {
     selectedAgentId = hub.id;
     renderAll();
   });
