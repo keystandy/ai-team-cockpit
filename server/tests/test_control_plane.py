@@ -125,15 +125,44 @@ class ControlPlaneTests(unittest.TestCase):
             state = orchestrator.state(run_id)
             if state["run"]["status"] == "pending_review":
                 self.assertEqual(adapters.review_calls, 2)
-                self.assertTrue(
-                    all(task["attempt"] == 2 for task in state["tasks"])
-                )
                 self.assertIn("review.returned", [
                     event["type"] for event in state["events"]
                 ])
                 return
             time.sleep(0.02)
         self.fail("复核退回后没有完成上游重试")
+
+    def test_review_return_reruns_research_chain(self) -> None:
+        class NewsAdapters:
+            def __init__(self):
+                self.calls = {"dou": 0, "shen": 0, "ke": 0}
+
+            def run(self, agent_id, prompt, workspace, artifact_path, web=False):
+                self.calls[agent_id] += 1
+                artifact_path.parent.mkdir(parents=True, exist_ok=True)
+                if agent_id == "ke":
+                    output = (
+                        "RETURN\n补检索一手来源"
+                        if self.calls[agent_id] == 1
+                        else "PASS\n来源已补齐"
+                    )
+                else:
+                    output = f"{agent_id} output"
+                artifact_path.write_text(output + "\n", encoding="utf-8")
+                return AgentResult(agent_id, "success", output, 0.01, 0)
+
+        adapters = NewsAdapters()
+        orchestrator = TeamOrchestrator(self.settings, self.store, adapters)
+        data = orchestrator.create("查今天的 AI 新闻 1 条", None)
+        run_id = data["run"]["id"]
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            state = orchestrator.state(run_id)
+            if state["run"]["status"] == "pending_review":
+                self.assertEqual(adapters.calls, {"dou": 2, "shen": 2, "ke": 2})
+                return
+            time.sleep(0.02)
+        self.fail("新闻复核退回后没有重跑完整检索链")
 
 
 if __name__ == "__main__":

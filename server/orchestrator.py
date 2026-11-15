@@ -176,6 +176,30 @@ def build_plan(goal: str) -> list[dict[str, Any]]:
     return tasks
 
 
+def goal_specific_rules(goal: str) -> str:
+    if re.search(r"新闻|资讯|最新|今天|今日", goal):
+        count_match = re.search(r"(\d+)\s*条", goal)
+        count = count_match.group(1) if count_match else "用户指定数量"
+        today = datetime.now().astimezone().strftime("%Y-%m-%d")
+        return (
+            f"这是新闻检索任务，当前日期为 {today}。"
+            f"必须交付 {count} 条符合用户时效要求的条目。"
+            "每条必须列明事件发生日、首次披露日、报道日、可访问的一手来源链接、"
+            "来源等级和新闻分类。评论、宣传稿、聚合短讯必须单列，不能凑入新闻条数。"
+            "数量不足时明确说不足，不得用旧闻、评论或无关条目填充。"
+            "全球首个、首例、最大、成本最低等最高级表述必须有独立证据。"
+        )
+    if re.search(r"架构|优点|缺点|改进|方案|设计", goal):
+        return (
+            "交付最终分析，不交后续计划。列出有依据的优点、缺点和一个最重要的改进方向；"
+            "每条结论标注事实或推断，不得虚构运行数据。"
+        )
+    return (
+        "直接满足用户目标；先结论后依据；不确定内容明确标注，"
+        "不得用与目标无关的模板段落代替交付。"
+    )
+
+
 def review_passes(output: str) -> bool:
     for line in output.splitlines():
         value = line.strip().upper()
@@ -275,6 +299,19 @@ class TeamOrchestrator:
             raise KeyError(task_id)
         if task["status"] not in ("failed", "blocked", "pending_review"):
             raise ValueError("当前任务状态不可重试")
+        if task["role"] == "review":
+            for upstream in self.store.list_tasks(run_id):
+                if upstream["seq"] >= task["seq"]:
+                    continue
+                self.store.update_task(
+                    upstream["id"],
+                    status="waiting",
+                    attempt=0,
+                    result="",
+                    evidence="",
+                    error="老板要求重试，整条上游链需要重做",
+                    accepted_by=None,
+                )
         self.store.update_task(
             task_id,
             status="waiting",
@@ -332,12 +369,16 @@ class TeamOrchestrator:
 
     def _prompt(self, task: dict[str, Any], goal: str, workspace: Path, prior: str) -> str:
         safe_prior = prior[-12000:]
+        rules = goal_specific_rules(goal)
         if task["role"] == "research":
             context = workspace_context(workspace, 5000)
             return (
                 "你是团队检索员。只返回可直接引用的事实与来源，不编造。\n"
-                f"总目标：{goal}\n\n工作区文本：\n{context}\n\n"
-                "需要最新信息时使用联网；输出关键事实、来源、时效和不确定性。"
+                f"总目标：{goal}\n\n任务专用验收口径：\n{rules}\n\n"
+                f"上一次退回意见与已有材料（如有）：\n{safe_prior or '(无)'}\n\n"
+                f"工作区文本：\n{context}\n\n"
+                "请联网重新检索并打开可访问来源，优先一手来源。"
+                "逐条给出事件发生日、首次披露日、报道日和链接，不得用旧闻冒充今日新闻。"
             )
         if task["role"] in ("plan", "analyze"):
             context = workspace_context(workspace, 5000)
@@ -351,8 +392,8 @@ class TeamOrchestrator:
             else:
                 instruction = (
                     "你是团队分析员。只读分析，不修改文件，不调用文件或终端工具。"
-                    "直接完成总目标，输出最终分析，不要只给后续计划。"
-                    "至少给出三条有依据的优点或结论、一个最重要改进方向、风险与局限。"
+                    "直接完成总目标，输出最终交付，不要只给后续计划。"
+                    f"任务专用验收口径：{rules}"
                 )
             return (
                 f"{instruction}\n"
@@ -374,6 +415,7 @@ class TeamOrchestrator:
         return (
             "你是独立验收员。不要修改文件，不要相信实现者自述。\n"
             f"总目标：{goal}\n工作目录：{workspace}\n\n"
+            f"任务专用验收口径：\n{rules}\n\n"
             f"当前 AI 团队关键制度：\n{team_context(3500)}\n\n"
             f"全部上游结果：\n{safe_prior}\n\n"
             "只根据以上材料做只读审查，不要调用工具。"
@@ -444,7 +486,9 @@ class TeamOrchestrator:
                     prompt = self._prompt(task, goal, workspace, prior)
                     self.store.update_task(task["id"], prompt=prompt)
                     artifact_path = (
-                        self.settings.artifacts_dir / run_id / f"{task['id']}.md"
+                        self.settings.artifacts_dir
+                        / run_id
+                        / f"{task['id']}-attempt{attempt}.md"
                     )
                     artifact_path.parent.mkdir(parents=True, exist_ok=True)
                     result: AgentResult = self.adapters.run(
@@ -466,7 +510,7 @@ class TeamOrchestrator:
                             artifact_path.name,
                             result.output,
                         )
-                        if task["role"] == "review":
+                        if task["role"] in ("review", "research", "analyze"):
                             evidence = str(output_path)
                         else:
                             after = workspace_snapshot(workspace)
@@ -476,10 +520,10 @@ class TeamOrchestrator:
                                 run_id,
                                 task["id"],
                                 "workspace_diff",
-                                f"{task['id']}-diff.txt",
+                                f"{task['id']}-attempt{attempt}-diff.txt",
                                 diff_text,
                             )
-                            evidence = str(diff_path)
+                            evidence = f"{output_path}; {diff_path}"
                         if task["role"] == "review" and not review_passes(result.output):
                             reason = result.output.strip()[:2000] or "复核退回"
                             if task["attempt"] < task["max_attempts"]:
@@ -490,18 +534,18 @@ class TeamOrchestrator:
                                     evidence=str(output_path),
                                     error=f"复核退回：{reason}",
                                 )
-                                by_title = {
-                                    item["title"]: item
-                                    for item in self.store.list_tasks(run_id)
-                                }
-                                for dependency in task["deps"]:
-                                    producer = by_title.get(dependency)
-                                    if producer and producer["status"] == "accepted":
-                                        self.store.update_task(
-                                            producer["id"],
-                                            status="waiting",
-                                            error="独立复核退回，需要按证据修改",
-                                        )
+                                for upstream in self.store.list_tasks(run_id):
+                                    if upstream["seq"] >= task["seq"]:
+                                        continue
+                                    self.store.update_task(
+                                        upstream["id"],
+                                        status="waiting",
+                                        attempt=0,
+                                        result="",
+                                        evidence="",
+                                        error="独立复核退回，整条上游链需要重做",
+                                        accepted_by=None,
+                                    )
                                 self.store.add_event(
                                     run_id,
                                     "review.returned",
