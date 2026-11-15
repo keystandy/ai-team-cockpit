@@ -1,0 +1,16 @@
+{
+  "host": "127.0.0.1",
+  "port": 8765,
+  "taskTimeoutSeconds": 300,
+  "maxAttempts": 2,
+  "dshExe": "D:\\Program Files\\DSH NEXT\\DSH NEXT.exe",
+  "dshBin": "D:\\Program Files\\DSH NEXT\\resources\\app.asar\\node_modules\\@deepseek-ai\\dsh\\lib\\bin.js",
+  "dshHome": "E:\\DSHDockData\\dsh-home",
+  "dshCredentials": "E:\\DSHDockData\\dsh-home\\.credentials.yaml",
+  "codexExe": "D:\\WindowsApps\\OpenAI.Codex_26.1111.2228.0_x64__2p2nqsd0c76g0\\app\\resources\\codex.exe",
+  "codexHome": "E:\\WorkBuddy工作空间\\codex-bridge\\codex-home",
+  "claudeExe": "D:\\Programs\\claude-code\\claude.exe",
+  "doubaoBridge": "E:\\WorkBuddy工作空间\\doubao-bridge\\doubao.mjs",
+  "nodeExe": "node"
+}
+

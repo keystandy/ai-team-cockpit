@@ -1845,6 +1845,7 @@ p {
   const OFFICE = window.OFFICE || { agents: [], log: [] };
   const LOGOS = window.LOGOS || {};
   const ARTIFACT_SEED = Array.isArray(window.ARTIFACTS) ? window.ARTIFACTS : [];
+  const isLiveMode = location.protocol === "http:" || location.protocol === "https:";
   const agents = Array.isArray(OFFICE.agents) ? OFFICE.agents : [];
   const hub = agents.find((agent) => agent.id === "bang") || agents[0] || {
     id: "bang",
@@ -1894,7 +1895,8 @@ p {
     running: { label: "进行中", symbol: "▶", className: "status-busy", ticketClass: "is-running" },
     pending: { label: "待验收", symbol: "□", className: "status-busy", ticketClass: "is-pending" },
     accepted: { label: "已验收", symbol: "✓", className: "status-online", ticketClass: "is-accepted" },
-    failed: { label: "失败", symbol: "×", className: "status-failed", ticketClass: "is-failed" }
+    failed: { label: "失败", symbol: "×", className: "status-failed", ticketClass: "is-failed" },
+    cancelled: { label: "已取消", symbol: "×", className: "status-failed", ticketClass: "is-failed" }
   };
 
   const elements = {
@@ -1954,6 +1956,10 @@ p {
   let artifactGenerationActive = false;
   let newArtifactId = null;
   let artifactDialogTrigger = null;
+  let liveRunId = null;
+  let liveEventId = 0;
+  let livePollTimer = null;
+  let liveEvents = [];
   const demoArtifactJobs = new Set();
   const returnEditors = new Set();
   const returnDrafts = new Map();
@@ -2005,8 +2011,270 @@ p {
   }
 
   function absoluteArtifactPath(relativePath) {
+    if (/^[A-Za-z]:[\\/]/.test(String(relativePath || ""))) return String(relativePath);
     const root = projectRootPath();
     return root.replace(/\//g, "\\") + "\\" + String(relativePath || "").replace(/\//g, "\\");
+  }
+
+  async function apiRequest(path, options = {}) {
+    const response = await fetch(path, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      }
+    });
+    let data = null;
+    try {
+      data = await response.json();
+    } catch (error) {
+      throw new Error(`服务返回了非 JSON 数据（HTTP ${response.status}）`);
+    }
+    if (!response.ok || !data.ok) {
+      throw new Error(data.error || `请求失败（HTTP ${response.status}）`);
+    }
+    return data;
+  }
+
+  function liveKind(role) {
+    return {
+      research: "search",
+      plan: "planning",
+      analyze: "planning",
+      implement: "execution",
+      review: "review"
+    }[role] || "execution";
+  }
+
+  function liveStatus(status) {
+    return {
+      waiting: "waiting",
+      running: "running",
+      pending_review: "pending",
+      accepted: "accepted",
+      failed: "failed",
+      blocked: "failed",
+      cancelled: "cancelled"
+    }[status] || "failed";
+  }
+
+  function liveTaskToUi(task, run) {
+    const failed = task.error || (task.status === "failed" ? "执行失败" : "");
+    return {
+      id: task.id,
+      liveId: task.id,
+      jobName: truncate(run.goal, 32),
+      originalText: run.goal,
+      kind: liveKind(task.role),
+      title: task.title,
+      ownerId: task.agent_id,
+      status: liveStatus(task.status),
+      liveStatus: task.status,
+      reviewerId: task.status === "pending_review" ? hub.id : null,
+      acceptanceCondition: task.acceptance,
+      evidence: task.evidence || "",
+      submittedAt: task.finished_at,
+      acceptedAt: task.accepted_at,
+      acceptedByBoss: task.status === "accepted",
+      result: task.result || "",
+      failureHistory: failed ? [{ reason: failed, time: task.updated_at }] : [],
+      returnHistory: [],
+      deps: task.deps || [],
+      attempt: task.attempt
+    };
+  }
+
+  function liveArtifactToUi(artifact, taskById) {
+    const task = taskById.get(artifact.task_id);
+    const agentId = task ? task.agent_id : "bang";
+    return {
+      id: `live-artifact-${artifact.id}`,
+      title: task ? `${task.title} · 证据` : `任务证据 #${artifact.id}`,
+      ownerId: agentId,
+      reviewerId: "bang",
+      acceptedAt: artifact.created_at,
+      accepted: true,
+      evidence: artifact.sha256,
+      source: `真实产物 / ${artifact.kind}`,
+      time: artifact.created_at,
+      path: artifact.path,
+      real: true,
+      summary: `SHA256：${artifact.sha256}\n大小：${artifact.size} 字节`,
+      highlights: [
+        `任务：${task ? task.title : artifact.task_id || "运行级产物"}`,
+        `路径：${artifact.path}`,
+        `类型：${artifact.kind}`
+      ]
+    };
+  }
+
+  function liveEventMessage(event) {
+    const payload = event.payload || {};
+    const title = payload.title || "";
+    return {
+      "run.created": `创建任务：${truncate(payload.goal || "", 42)}`,
+      "task.started": `开始「${title}」${payload.attempt ? `（第 ${payload.attempt} 次）` : ""}`,
+      "task.completed": `交活「${title}」，等待验收`,
+      "task.attempt_failed": `执行「${title}」失败：${truncate(payload.error || "", 48)}`,
+      "task.failed": `任务失败：「${title}」`,
+      "task.retry_requested": `请求重试「${title}」`,
+      "task.accepted": `验收通过「${title}」`,
+      "review.returned": `复核退回「${title}」，等待上游修正`,
+      "review.failed": `复核失败「${title}」`,
+      "run.cancelled": "任务已取消",
+      "run.exception": `运行异常：${truncate(payload.error || "", 48)}`
+    }[event.type] || event.type;
+  }
+
+  function applyLiveState(payload, { resetEvents = false } = {}) {
+    const run = payload.run;
+    const taskById = new Map((payload.tasks || []).map((task) => [task.id, task]));
+    liveRunId = run.id;
+    tasks = (payload.tasks || []).map((task) => liveTaskToUi(task, run));
+    artifacts = (payload.artifacts || []).map((artifact) =>
+      liveArtifactToUi(artifact, taskById)
+    );
+    artifactGenerationActive = tasks.some((task) => task.status === "running");
+    renderAll();
+
+    const events = payload.events || [];
+    if (resetEvents) {
+      liveEvents = [];
+      eventSequence = 0;
+    }
+    events.forEach((event) => {
+      if (event.id <= liveEventId) return;
+      liveEventId = Math.max(liveEventId, event.id);
+      liveEvents.push(event);
+    });
+    liveEvents = liveEvents
+      .filter((event, index, list) => list.findIndex((item) => item.id === event.id) === index)
+      .sort((left, right) => right.id - left.id)
+      .slice(0, 50);
+    elements.eventFeed.innerHTML = liveEvents.map((event) => {
+      const agent = agentById.get(event.actor) || hub;
+      const failed = /failed|exception|cancelled/.test(event.type);
+      const timestamp = String(event.created_at || "").match(/(\d{2}:\d{2}:\d{2})/);
+      return `
+        <li class="event${failed ? " is-failed" : ""}">
+          <span class="event-time t4">${escapeHtml(timestamp ? timestamp[1] : nowTime())}</span>
+          <span class="event-copy t4"><strong>${escapeHtml(agent.name || event.actor)}</strong> · ${escapeHtml(liveEventMessage(event))}</span>
+        </li>
+      `;
+    }).join("") || `<li class="empty-state t4">还没有真实事件。</li>`;
+    eventSequence = liveEvents.length;
+    elements.eventCount.textContent = `${eventSequence} 条`;
+    elements.eventFeed.scrollTop = 0;
+
+    const terminal = ["accepted", "failed", "cancelled", "blocked"].includes(run.status);
+    if (terminal && livePollTimer) {
+      window.clearInterval(livePollTimer);
+      livePollTimer = null;
+    }
+    elements.syncTime.textContent = `真实同步于 ${nowTime()}`;
+    elements.taskSummary.textContent = terminal
+      ? `运行 ${run.status} · ${truncate(run.goal, 60)}`
+      : `真实运行中 · ${truncate(run.goal, 60)}`;
+  }
+
+  async function refreshLiveState({ resetEvents = false } = {}) {
+    if (!isLiveMode) return;
+    if (!liveRunId) {
+      const latest = await apiRequest("/api/runs/latest");
+      if (latest.data) applyLiveState(latest.data, { resetEvents: true });
+      return;
+    }
+    const result = await apiRequest(`/api/runs/${encodeURIComponent(liveRunId)}?after=${liveEventId}`);
+    applyLiveState(result.data, { resetEvents });
+  }
+
+  async function refreshLiveAgents() {
+    if (!isLiveMode) return;
+    try {
+      const result = await apiRequest("/api/agents");
+      result.agents.forEach((item) => {
+        const local = agentById.get(item.id);
+        if (!local) return;
+        local.status = item.status;
+        initialStatus.set(item.id, item.status);
+        if (item.detail) local.last = item.detail;
+      });
+      renderAll();
+    } catch (error) {
+      setFormMessage(`成员状态读取失败：${error.message}`, true);
+    }
+  }
+
+  async function publishLiveTask(text) {
+    publishLocked = true;
+    publishing = true;
+    renderPublishControls();
+    try {
+      const result = await apiRequest("/api/tasks", {
+        method: "POST",
+        body: JSON.stringify({ goal: text })
+      });
+      liveEventId = 0;
+      applyLiveState(result.data, { resetEvents: true });
+      setFormMessage("任务已进入真实执行队列。", false);
+      if (!livePollTimer) {
+        livePollTimer = window.setInterval(() => {
+          refreshLiveState().catch((error) => {
+            setFormMessage(`同步失败：${error.message}`, true);
+          });
+        }, 1000);
+      }
+    } catch (error) {
+      setFormMessage(`发布失败：${error.message}`, true);
+    } finally {
+      publishLocked = false;
+      publishing = false;
+      renderPublishControls();
+    }
+  }
+
+  async function acceptLiveTask(task) {
+    try {
+      const result = await apiRequest(
+        `/api/tasks/${encodeURIComponent(liveRunId)}/${encodeURIComponent(task.id)}/accept`,
+        { method: "POST", body: JSON.stringify({ accepted_by: "老板" }) }
+      );
+      applyLiveState(result.data);
+    } catch (error) {
+      setFormMessage(`验收失败：${error.message}`, true);
+    }
+  }
+
+  async function retryLiveTask(task) {
+    try {
+      const result = await apiRequest(
+        `/api/tasks/${encodeURIComponent(liveRunId)}/${encodeURIComponent(task.id)}/retry`,
+        { method: "POST", body: "{}" }
+      );
+      applyLiveState(result.data);
+      if (!livePollTimer) {
+        livePollTimer = window.setInterval(() => refreshLiveState(), 1000);
+      }
+    } catch (error) {
+      setFormMessage(`重试失败：${error.message}`, true);
+    }
+  }
+
+  async function initLiveMode() {
+    if (!isLiveMode) return;
+    elements.syncTime.textContent = `真实同步于 ${nowTime()}`;
+    setFormMessage("真实执行模式：任务将写入 SQLite 并调用团队成员。", false);
+    await refreshLiveAgents();
+    try {
+      await refreshLiveState({ resetEvents: true });
+      livePollTimer = window.setInterval(() => {
+        refreshLiveState().catch((error) => {
+          setFormMessage(`同步失败：${error.message}`, true);
+        });
+      }, 1500);
+    } catch (error) {
+      setFormMessage(`控制面未就绪：${error.message}`, true);
+    }
   }
 
   function formatDateTime(date) {
@@ -2251,6 +2519,7 @@ p {
   }
 
   function reviewerForTask(task) {
+    if (isLiveMode) return hub;
     return task.reviewerId ? agentById.get(task.reviewerId) || null : null;
   }
 
@@ -2523,6 +2792,9 @@ p {
   }
 
   function commandForTask(task, agent) {
+    if (isLiveMode) {
+      return `本地控制面自动执行\n角色：${agent.name}\n任务：${task.title}\n状态：${STATUS[task.status].label}`;
+    }
     const raw = String(agent.cmd || "当前会话即入口，无需命令");
     const commandTask = `${task.title}：${task.originalText}`;
     const workDir = "E:\\WorkBuddy工作空间\\ai-team\\cockpit";
@@ -2660,7 +2932,7 @@ p {
           <div class="ticket-info-block">
             <div class="ticket-info-head t4">
               <span>证据</span>
-              ${evidence ? `<span class="ticket-evidence-badge">演示</span>` : ""}
+              ${evidence ? `<span class="ticket-evidence-badge">${isLiveMode ? "真实" : "演示"}</span>` : ""}
             </div>
             <p class="ticket-info-value t3${evidence ? "" : " is-empty"}">${evidenceValue || "等待交活后生成演示证据。"}</p>
           </div>
@@ -2846,6 +3118,11 @@ p {
       return;
     }
 
+    if (isLiveMode) {
+      publishLiveTask(text);
+      return;
+    }
+
     publishLocked = true;
     publishing = true;
     artifactGenerationActive = true;
@@ -2897,6 +3174,10 @@ p {
   }
 
   async function retryTask(task) {
+    if (isLiveMode) {
+      await retryLiveTask(task);
+      return;
+    }
     const owner = memberById(task.ownerId);
     if (memberStatus(owner.id) === "offline") {
       task.status = "waiting";
@@ -2921,6 +3202,10 @@ p {
   }
 
   async function reassignTask(task) {
+    if (isLiveMode) {
+      setFormMessage("真实模式暂不支持手动改派；失败任务使用“重试”由控制面重新执行。", true);
+      return;
+    }
     const current = memberById(task.ownerId);
     const replacement = team.find((agent) => agent.id !== current.id && memberStatus(agent.id) === "online");
     if (!replacement) {
@@ -2953,6 +3238,10 @@ p {
   }
 
   function acceptTask(task) {
+    if (isLiveMode) {
+      acceptLiveTask(task);
+      return;
+    }
     if (!task || task.status !== "pending") return;
     const reviewer = reviewerForTask(task);
     const evidence = String(task.evidence || "").trim();
@@ -3197,6 +3486,17 @@ p {
   });
 
   elements.refreshButton.addEventListener("click", () => {
+    if (isLiveMode) {
+      elements.refreshButton.disabled = true;
+      elements.refreshButton.textContent = "刷新中";
+      Promise.all([refreshLiveAgents(), refreshLiveState()])
+        .catch((error) => setFormMessage(`刷新失败：${error.message}`, true))
+        .finally(() => {
+          elements.refreshButton.disabled = false;
+          elements.refreshButton.textContent = "刷新";
+        });
+      return;
+    }
     if (syncTimer) return;
     elements.refreshButton.disabled = true;
     elements.refreshButton.textContent = "刷新中";
@@ -3218,6 +3518,7 @@ p {
   elements.syncTime.textContent = `同步于 ${initialSyncTime()}`;
   populateInitialEvents();
   renderAll();
+  initLiveMode();
 })();
 </script>
 </body>

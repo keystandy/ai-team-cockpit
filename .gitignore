@@ -4,6 +4,8 @@
 dom.html
 node_modules/
 *.log
+__pycache__/
+*.py[cod]
 
 # 本机配置（含绝对路径，不提交）
 local.config.json
@@ -25,3 +27,8 @@ build/final*.png
 build/full.png
 build/art-*.png
 build/d-*.txt
+
+# 真实控制面运行数据
+runtime/
+workspaces/
+data/live-team.sqlite3*
