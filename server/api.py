@@ -105,6 +105,14 @@ class TeamRequestHandler(BaseHTTPRequestHandler):
                 self._send_json({"ok": True, "data": data}, 201)
                 return
             parts = [part for part in path.split("/") if part]
+            if len(parts) == 4 and parts[:2] == ["api", "runs"] and parts[3] == "decision":
+                decision = str(body.get("decision", ""))
+                window_days = int(body.get("window_days", 3))
+                data = self.orchestrator.decide(
+                    parts[2], decision, window_days=window_days
+                )
+                self._send_json({"ok": True, "data": data})
+                return
             # /api/tasks/{run_id}/{task_id}/{action}
             if len(parts) == 5 and parts[0:2] == ["api", "tasks"]:
                 run_id, task_id, action = parts[2], parts[3], parts[4]

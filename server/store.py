@@ -20,6 +20,9 @@ CREATE TABLE IF NOT EXISTS runs (
     status TEXT NOT NULL,
     output TEXT NOT NULL DEFAULT '',
     error TEXT,
+    decision TEXT,
+    decision_json TEXT,
+    decision_at TEXT,
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
@@ -98,6 +101,19 @@ class TeamStore:
     def _initialize(self) -> None:
         with self._connection() as connection:
             connection.executescript(SCHEMA)
+            columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(runs)").fetchall()
+            }
+            for column, definition in (
+                ("decision", "TEXT"),
+                ("decision_json", "TEXT"),
+                ("decision_at", "TEXT"),
+            ):
+                if column not in columns:
+                    connection.execute(
+                        f"ALTER TABLE runs ADD COLUMN {column} {definition}"
+                    )
 
     def create_run(self, run_id: str, goal: str, workspace: Path, tasks: list[dict]) -> None:
         stamp = now_iso()
@@ -172,6 +188,22 @@ class TeamStore:
                     status if status is not None else run["status"],
                     output if output is not None else run["output"],
                     error if error is not None else run["error"],
+                    now_iso(),
+                    run_id,
+                ),
+            )
+
+    def set_decision(self, run_id: str, decision: str, payload: dict[str, Any]) -> None:
+        with self._connection() as connection:
+            connection.execute(
+                """
+                UPDATE runs SET decision = ?, decision_json = ?, decision_at = ?,
+                    updated_at = ? WHERE id = ?
+                """,
+                (
+                    decision,
+                    json.dumps(payload, ensure_ascii=False),
+                    now_iso(),
                     now_iso(),
                     run_id,
                 ),

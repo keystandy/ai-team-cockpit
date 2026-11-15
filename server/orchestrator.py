@@ -279,6 +279,23 @@ def goal_specific_rules(goal: str) -> str:
     )
 
 
+def requested_count(goal: str) -> int | None:
+    match = re.search(r"(\d+)\s*条", goal)
+    return int(match.group(1)) if match else None
+
+
+def reports_shortfall(text: str) -> bool:
+    patterns = (
+        r"不足\s*\d*\s*条",
+        r"缺\s*\d+\s*条",
+        r"缺口\s*\d+",
+        r"数量(?:硬)?不达标",
+        r"无法交付\s*\d+\s*条",
+        r"未完成\s*\d+\s*条",
+    )
+    return any(re.search(pattern, text) for pattern in patterns)
+
+
 def review_passes(output: str) -> bool:
     for line in output.splitlines():
         value = line.strip().upper()
@@ -346,6 +363,87 @@ class TeamOrchestrator:
     def latest(self) -> dict[str, Any] | None:
         run_id = self.store.latest_run_id()
         return self.state(run_id) if run_id else None
+
+    def _effective_goal(self, run: dict[str, Any]) -> str:
+        goal = run["goal"]
+        decision = run.get("decision")
+        try:
+            payload = json.loads(run.get("decision_json") or "{}")
+        except json.JSONDecodeError:
+            payload = {}
+        if decision == "accept_shortfall":
+            return (
+                goal
+                + "\n\n老板已批准本次接受数量不足。"
+                "复核时评价是否诚实列出缺口、来源、风险和不可发布项，"
+                "不得要求继续补足数量。"
+            )
+        if decision == "expand_scope":
+            days = int(payload.get("window_days", 3))
+            return (
+                goal
+                + f"\n\n老板已批准把检索时间窗口扩大为最近 {days} 天（含今天）。"
+                f"标题和交付中必须写明“近 {days} 天”，不得继续声称“今天”。"
+                "事件发生日、首次披露日和报道日仍须逐条列明。"
+            )
+        return goal
+
+    def decide(
+        self,
+        run_id: str,
+        decision: str,
+        *,
+        window_days: int = 3,
+    ) -> dict[str, Any]:
+        run = self.store.get_run(run_id)
+        if not run:
+            raise KeyError(run_id)
+        if run["status"] != "needs_decision":
+            raise ValueError("当前运行不在待决策状态")
+        if decision == "cancel":
+            self.store.set_decision(run_id, decision, {})
+            self.store.add_event(run_id, "run.decision", "老板", {"decision": decision})
+            return self.cancel(run_id)
+        if decision == "accept_shortfall":
+            self.store.set_decision(run_id, decision, {})
+            self.store.add_event(
+                run_id,
+                "run.decision",
+                "老板",
+                {"decision": decision, "label": "接受数量不足"},
+            )
+            self.store.update_run(run_id, status="running", error="")
+            self._start_worker(run_id)
+            return self.state(run_id)
+        if decision == "expand_scope":
+            if not 1 <= window_days <= 30:
+                raise ValueError("时间窗口必须在 1 到 30 天之间")
+            payload = {"window_days": window_days}
+            self.store.set_decision(run_id, decision, payload)
+            for task in self.store.list_tasks(run_id):
+                self.store.update_task(
+                    task["id"],
+                    status="waiting",
+                    attempt=0,
+                    result="",
+                    evidence="",
+                    error="老板批准扩大检索时间窗口",
+                    accepted_by=None,
+                )
+            self.store.update_run(run_id, status="running", error="")
+            self.store.add_event(
+                run_id,
+                "run.decision",
+                "老板",
+                {
+                    "decision": decision,
+                    "label": f"扩大到最近 {window_days} 天",
+                    "window_days": window_days,
+                },
+            )
+            self._start_worker(run_id)
+            return self.state(run_id)
+        raise ValueError("未知决策，必须是 accept_shortfall、expand_scope 或 cancel")
 
     def accept(self, run_id: str, task_id: str, accepted_by: str = "老板") -> dict[str, Any]:
         task = self.store.get_task(task_id)
@@ -544,7 +642,7 @@ class TeamOrchestrator:
         if not run:
             return
         workspace = Path(run["workspace"])
-        goal = run["goal"]
+        goal = self._effective_goal(run)
         self.store.update_run(run_id, status="running")
         before = workspace_snapshot(workspace)
         try:
@@ -688,6 +786,45 @@ class TeamOrchestrator:
                             error="",
                             accepted_by=accepted_by,
                         )
+                        if task["role"] == "analyze":
+                            tasks = self.store.list_tasks(run_id)
+                            research_text = "\n".join(
+                                item["result"]
+                                for item in tasks
+                                if item["role"] == "research"
+                            )
+                            analyze_text = result.output
+                            expected = requested_count(goal)
+                            if (
+                                expected
+                                and reports_shortfall(research_text)
+                                and reports_shortfall(analyze_text)
+                            ):
+                                reason = (
+                                    f"检索与分析均确认目标 {expected} 条，"
+                                    "但严格口径下数量不足。"
+                                )
+                                self.store.update_run(
+                                    run_id,
+                                    status="needs_decision",
+                                    output=reason,
+                                )
+                                self.store.add_event(
+                                    run_id,
+                                    "run.needs_decision",
+                                    "Orchestrator",
+                                    {
+                                        "reason": reason,
+                                        "expected_count": expected,
+                                        "options": [
+                                            "accept_shortfall",
+                                            "expand_scope",
+                                            "cancel",
+                                        ],
+                                    },
+                                    task["id"],
+                                )
+                                return
                         self.store.add_event(
                             run_id,
                             "task.completed",

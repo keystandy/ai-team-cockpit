@@ -51,6 +51,11 @@ running
 pending_review
   → accepted（仅复核首行为 PASS，且老板确认）
 
+needs_decision
+  → accept_shortfall（接受缺口，进入复核）
+  → expand_scope（扩大检索窗口，整条链重做）
+  → cancel（取消任务）
+
 复核 RETURN
   → 复核任务回到 waiting
   → 上游生产者回到 waiting
@@ -99,6 +104,7 @@ GET  /api/runs/{run_id}?after={event_id}
 POST /api/tasks/{run_id}/{task_id}/accept
 POST /api/tasks/{run_id}/{task_id}/retry
 POST /api/runs/{run_id}/cancel
+POST /api/runs/{run_id}/decision
 GET  /api/artifacts/{run_id}
 ```
 
@@ -113,6 +119,18 @@ workspaces/{workspace}/
 ```
 
 以上内容均由 `.gitignore` 排除，不进入代码仓库。
+
+## 待决策门
+
+当目标明确要求新闻条数，且小豆检索与小深分析都报告“数量不足、缺口、无法交付”时：
+
+- 运行进入 `needs_decision`，立即停止昂贵调用。
+- 不启动第二次联网检索或复核。
+- 驾驶舱显示正式决策卡，老板可以选择：
+  - 接受数量不足：复核只检查缺口、来源和风险是否诚实列明。
+  - 扩大时间窗口：可选择近 3 / 7 / 30 天，清除旧上游结果后重新检索。
+  - 取消任务。
+- 决策写入 runs 表：`decision`、`decision_json`、`decision_at`。
 
 ## 当前限制
 

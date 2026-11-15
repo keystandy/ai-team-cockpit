@@ -52,6 +52,21 @@ class ReturnOnceAdapters:
         )
 
 
+class ShortfallAdapters:
+    def __init__(self):
+        self.calls = {"dou": 0, "shen": 0, "ke": 0}
+
+    def run(self, agent_id, prompt, workspace, artifact_path, web=False):
+        self.calls[agent_id] += 1
+        artifact_path.parent.mkdir(parents=True, exist_ok=True)
+        if agent_id == "ke":
+            output = "PASS\n老板已批准不足交付"
+        else:
+            output = "严格筛选后只有1条，目标5条，不足5条，缺口4条"
+        artifact_path.write_text(output + "\n", encoding="utf-8")
+        return AgentResult(agent_id, "success", output, 0.01, 0)
+
+
 class ControlPlaneTests(unittest.TestCase):
     def setUp(self) -> None:
         self.temp = tempfile.TemporaryDirectory(dir=COCKPIT_ROOT)
@@ -178,6 +193,57 @@ class ControlPlaneTests(unittest.TestCase):
                 return
             time.sleep(0.02)
         self.fail("新闻复核退回后没有重跑完整检索链")
+
+    def test_shortfall_stops_for_decision_and_accepts_partial(self) -> None:
+        adapters = ShortfallAdapters()
+        orchestrator = TeamOrchestrator(self.settings, self.store, adapters)
+        data = orchestrator.create("查今天的 AI 新闻5条", None)
+        run_id = data["run"]["id"]
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            run = orchestrator.state(run_id)["run"]
+            if run["status"] == "needs_decision":
+                self.assertEqual(adapters.calls, {"dou": 1, "shen": 1, "ke": 0})
+                orchestrator.decide(run_id, "accept_shortfall")
+                break
+            time.sleep(0.02)
+        else:
+            self.fail("数量不足后没有进入待决策状态")
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            state = orchestrator.state(run_id)
+            if state["run"]["status"] == "pending_review":
+                self.assertEqual(adapters.calls["ke"], 1)
+                self.assertEqual(state["run"]["decision"], "accept_shortfall")
+                time.sleep(0.15)
+                return
+            time.sleep(0.02)
+        self.fail("接受不足后没有进入待老板验收")
+
+    def test_shortfall_expand_scope_reruns_research(self) -> None:
+        adapters = ShortfallAdapters()
+        orchestrator = TeamOrchestrator(self.settings, self.store, adapters)
+        data = orchestrator.create("查今天的 AI 新闻5条", None)
+        run_id = data["run"]["id"]
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            if orchestrator.state(run_id)["run"]["status"] == "needs_decision":
+                orchestrator.decide(run_id, "expand_scope", window_days=3)
+                break
+            time.sleep(0.02)
+        else:
+            self.fail("首次数量不足未触发决策")
+        deadline = time.time() + 5
+        while time.time() < deadline:
+            run = orchestrator.state(run_id)["run"]
+            if run["status"] == "needs_decision" and adapters.calls["dou"] == 2:
+                self.assertEqual(adapters.calls["shen"], 2)
+                self.assertEqual(adapters.calls["ke"], 0)
+                self.assertEqual(run["decision"], "expand_scope")
+                time.sleep(0.15)
+                return
+            time.sleep(0.02)
+        self.fail("扩大时间窗口后没有重新检索")
 
 
 if __name__ == "__main__":

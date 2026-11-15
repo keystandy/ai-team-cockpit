@@ -543,6 +543,50 @@ p {
   color: var(--status-failed);
 }
 
+.decision-card {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  border: 1px solid var(--status-busy);
+  border-radius: var(--radius-lg);
+  background: var(--status-busy-soft);
+}
+
+.decision-card[hidden] {
+  display: none;
+}
+
+.decision-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.decision-copy {
+  min-width: 0;
+}
+
+.decision-reason {
+  margin: var(--space-2) 0 0;
+  color: var(--text-secondary);
+}
+
+.decision-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  margin-top: var(--space-3);
+}
+
+.decision-window {
+  min-height: 34px;
+  padding: 0 var(--space-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-md);
+  background: var(--bg-card);
+  color: var(--text-primary);
+}
+
 .flow-gap {
   position: relative;
   min-height: 48px;
@@ -1743,6 +1787,25 @@ p {
           </form>
         </section>
 
+        <section class="decision-card" id="decisionPanel" hidden aria-labelledby="decisionTitle">
+          <div class="decision-head">
+            <div class="decision-copy">
+              <h2 class="t2" id="decisionTitle">需要老板决策</h2>
+              <p class="decision-reason t3" id="decisionReason"></p>
+            </div>
+          </div>
+          <div class="decision-actions">
+            <button class="button button-primary t3" id="acceptShortfallButton" type="button">接受数量不足</button>
+            <select class="decision-window t3" id="windowDaysSelect" aria-label="扩大检索时间窗口">
+              <option value="3">扩大到近 3 天</option>
+              <option value="7">扩大到近 7 天</option>
+              <option value="30">扩大到近 30 天</option>
+            </select>
+            <button class="button t3" id="expandScopeButton" type="button">扩大时间窗口</button>
+            <button class="button button-text t3" id="cancelDecisionButton" type="button">取消任务</button>
+          </div>
+        </section>
+
         <div class="flow-gap" aria-hidden="true">
           <span class="flow-label t4">小棒派活</span>
         </div>
@@ -1917,6 +1980,12 @@ p {
     taskForm: document.getElementById("taskForm"),
     taskInput: document.getElementById("taskInput"),
     formMessage: document.getElementById("formMessage"),
+    decisionPanel: document.getElementById("decisionPanel"),
+    decisionReason: document.getElementById("decisionReason"),
+    acceptShortfallButton: document.getElementById("acceptShortfallButton"),
+    expandScopeButton: document.getElementById("expandScopeButton"),
+    cancelDecisionButton: document.getElementById("cancelDecisionButton"),
+    windowDaysSelect: document.getElementById("windowDaysSelect"),
     clearButton: document.getElementById("clearButton"),
     publishButton: document.getElementById("publishButton"),
     eventFeed: document.getElementById("eventFeed"),
@@ -2122,7 +2191,9 @@ p {
       "review.returned": `复核退回「${title}」，等待上游修正`,
       "review.failed": `复核失败「${title}」`,
       "run.cancelled": "任务已取消",
-      "run.exception": `运行异常：${truncate(payload.error || "", 48)}`
+      "run.exception": `运行异常：${truncate(payload.error || "", 48)}`,
+      "run.needs_decision": `需要老板决策：${truncate(payload.reason || "", 52)}`,
+      "run.decision": `老板决定：${truncate(payload.label || payload.decision || "", 40)}`
     }[event.type] || event.type;
   }
 
@@ -2179,9 +2250,16 @@ p {
       livePollTimer = null;
     }
     elements.syncTime.textContent = `真实同步于 ${nowTime()}`;
-    elements.taskSummary.textContent = terminal
-      ? `运行 ${run.status} · ${truncate(run.goal, 60)}`
-      : `真实运行中 · ${truncate(run.goal, 60)}`;
+    const needsDecision = run.status === "needs_decision";
+    elements.decisionPanel.hidden = !needsDecision;
+    if (needsDecision) {
+      elements.decisionReason.textContent = run.output || "检索与分析均确认当前目标无法按原口径完成。";
+    }
+    elements.taskSummary.textContent = needsDecision
+      ? `等待老板决策 · ${truncate(run.goal, 60)}`
+      : terminal
+        ? `运行 ${run.status} · ${truncate(run.goal, 60)}`
+        : `真实运行中 · ${truncate(run.goal, 60)}`;
   }
 
   async function refreshLiveState({ resetEvents = false } = {}) {
@@ -2264,6 +2342,32 @@ p {
       }
     } catch (error) {
       setFormMessage(`重试失败：${error.message}`, true);
+    }
+  }
+
+  async function submitLiveDecision(decision, windowDays = 3) {
+    try {
+      const result = await apiRequest(
+        `/api/runs/${encodeURIComponent(liveRunId)}/decision`,
+        {
+          method: "POST",
+          body: JSON.stringify({
+            decision,
+            window_days: Number(windowDays)
+          })
+        }
+      );
+      applyLiveState(result.data);
+      setFormMessage("老板决策已记录，团队按新口径继续。", false);
+      if (!livePollTimer) {
+        livePollTimer = window.setInterval(() => {
+          refreshLiveState().catch((error) => {
+            setFormMessage(`同步失败：${error.message}`, true);
+          });
+        }, 1500);
+      }
+    } catch (error) {
+      setFormMessage(`决策提交失败：${error.message}`, true);
     }
   }
 
@@ -3390,6 +3494,18 @@ p {
     setFormMessage("", false);
     renderPublishControls();
     elements.taskInput.focus();
+  });
+
+  elements.acceptShortfallButton.addEventListener("click", () => {
+    submitLiveDecision("accept_shortfall");
+  });
+
+  elements.expandScopeButton.addEventListener("click", () => {
+    submitLiveDecision("expand_scope", elements.windowDaysSelect.value);
+  });
+
+  elements.cancelDecisionButton.addEventListener("click", () => {
+    submitLiveDecision("cancel");
   });
 
   document.querySelectorAll("[data-shortcut]").forEach((button) => {
